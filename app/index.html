@@ -13066,9 +13066,9 @@ const options=(a,id)=>a.map(x=>'<option value="'+esc(x.id)+'" '+(String(x.id)===
 const row=x=>'<span>'+esc(x)+'</span>';
 function bootstrap(){
  if(!Array.isArray(data.v51Users))data.v51Users=[
-  {id:'u-admin',name:'Administrador General',employeeId:1,roles:['admin'],allSites:true,venueIds:[],primaryVenueId:1,cashboxId:null,canVerify:true,canConfirm:true,expenseLimit:500,status:'Activo'},
+  {id:'u-admin',name:'Administrador General',employeeId:1,roles:['admin'],allSites:true,venueIds:[],primaryVenueId:1,cashboxId:null,canVerify:true,canConfirm:true,canRefund:true,expenseLimit:500,status:'Activo'},
   {id:'u-sales',name:get(data.employees,2)?.name||'Ventas online',employeeId:2,roles:['sales'],allSites:true,venueIds:[],primaryVenueId:1,cashboxId:null,canVerify:false,canConfirm:true,expenseLimit:0,status:'Activo'},
-  {id:'u-desk',name:'Encargado de sede',employeeId:null,roles:['desk'],allSites:false,venueIds:[1],primaryVenueId:1,cashboxId:1,canVerify:false,canConfirm:true,expenseLimit:100,status:'Activo'}
+  {id:'u-desk',name:'Encargado de sede',employeeId:null,roles:['desk'],allSites:false,venueIds:[1],primaryVenueId:1,cashboxId:1,canVerify:false,canConfirm:true,canRefund:false,expenseLimit:100,status:'Activo'}
  ];
  if(!data.v51Active||!get(data.v51Users,data.v51Active.userId))data.v51Active={userId:'u-admin',role:'admin'};
  if(!Array.isArray(data.v51Issues))data.v51Issues=[];
@@ -13090,6 +13090,7 @@ function authorized(u,task,venueId){if(!u||u.status!=='Activo'||(venueId!=null&&
  if(task==='confirm')return !!u.canConfirm&&(r==='sales'||r==='desk');
  if(task==='cash')return !!u.cashboxId&&(r==='sales'||r==='desk');
  if(task==='verify')return !!u.canVerify&&(r==='sales'||r==='desk');
+ if(task==='refund')return !!u.canRefund&&(r==='sales'||r==='desk');
  return false;
 }
 function sites(u=current()){return (data.venues||[]).filter(v=>valid(v)&&allowed(u,v.id))}
@@ -13370,11 +13371,12 @@ function userForm(id){if(!usersCanEdit())throw new Error('No autorizado');const 
  <div class="field"><label>Estado</label><select name="status"><option>Activo</option><option ${u?.status==='Inactivo'?'selected':''}>Inactivo</option></select></div>
  <div class="field full"><label><input type="checkbox" name="canConfirm" ${yes(u?.canConfirm!==false)}> Puede confirmar y cancelar reservas</label></div>
  <div class="field full"><label><input type="checkbox" name="canVerify" ${yes(!!u?.canVerify)}> Puede verificar ingresos electr\u00f3nicos</label></div>
+ <div class="field full"><label><input type="checkbox" name="canRefund" ${yes(!!u?.canRefund)}> Realizar devoluciones de dinero (sin segunda autorizaci\u00f3n)</label><small style="display:block;color:#697e74;font-size:11px">Se requiere turno de caja abierto. Cada salida queda registrada y vinculada al cobro original.</small></div>
  </div>`,f=>{const roleValues=f.getAll('roles').map(String),venueIds=f.getAll('venueIds').map(Number),allSites=f.has('allSites'),primaryVenueId=Number(f.get('primaryVenueId')),cashboxId=f.get('cashboxId')?Number(f.get('cashboxId')):null,name=String(f.get('name')||'').trim(),status=String(f.get('status'));
  if(name.length<3)return toast('Indica un nombre completo.');if(!roleValues.length)return toast('Selecciona al menos un rol.');if(!allSites&&!venueIds.length)return toast('Selecciona una sede autorizada.');if(!allSites&&!venueIds.includes(primaryVenueId))return toast('La sede principal debe estar autorizada.');const box=get(data.cashboxes,cashboxId);if(box&&(!allSites&&!venueIds.includes(box.venueId)))return toast('La caja debe pertenecer a una sede autorizada.');
  if(u?.id===current().id&&(!roleValues.includes('admin')||status!=='Activo'))return toast('No puedes quitar tu acceso administrativo activo.');
  if(u&&!roleValues.includes('admin')&&u.roles.includes('admin')&&users().filter(x=>x.id!==u.id&&x.status==='Activo'&&x.roles.includes('admin')).length===0)return toast('Debe quedar al menos un administrador activo.');
- const saved={id:u?.id||'u-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name,employeeId:f.get('employeeId')?Number(f.get('employeeId')):null,roles:roleValues,allSites,venueIds,primaryVenueId,cashboxId,status,canConfirm:f.has('canConfirm'),canVerify:f.has('canVerify'),expenseLimit:rnd(f.get('expenseLimit'))};
+ const saved={id:u?.id||'u-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name,employeeId:f.get('employeeId')?Number(f.get('employeeId')):null,roles:roleValues,allSites,venueIds,primaryVenueId,cashboxId,status,canConfirm:f.has('canConfirm'),canVerify:f.has('canVerify'),canRefund:f.has('canRefund'),expenseLimit:rnd(f.get('expenseLimit'))};
  if(u)Object.assign(u,saved);else users().push(saved);
  if(saved.employeeId){const emp=employee(saved.employeeId);if(emp){emp.venues=allSites?data.venues.map(x=>x.id):venueIds.slice();}}
  audit('Configuraci\u00f3n de usuario guardada',{userId:saved.id});persistAll();closeModal();render();toast('Usuario guardado.');
@@ -13487,7 +13489,7 @@ function v53StageFiles(files){
  w.v53Files=items;
  v53UpdateDraftGallery();
 }
-function v53StagedGalleryMarkup(){const entries=w.v53Files||[];return entries.map((x,i)=>'<div class="v53-evidence-tile"><button type="button" class="v53-evidence-open" data-action="v53PreviewDraft" data-index="'+i+'" title="Ver '+esc(x.file.name)+'">'+(x.kind==='image'?'<img src="'+esc(x.url)+'" alt="Miniatura de '+esc(x.file.name)+'">':ico('file'))+'<span>'+esc(x.file.name)+'</span></button><button type="button" class="v53-evidence-remove" data-action="v53RemoveDraft" data-index="'+i+'" aria-label="Quitar '+esc(x.file.name)+'">&times;</button></div>').join('')+(entries.length<V53_EVIDENCE_MAX?'<label class="v53-evidence-add" for="w-evidence-files">'+ico('plus')+'<span>Agregar</span></label>':'');}
+function v53StagedGalleryMarkup(){const entries=w.v53Files||[];return entries.map((x,i)=>'<div class="v53-evidence-tile"><button type="button" class="v53-evidence-open" data-action="v53PreviewDraft" data-index="'+i+'" title="Ver '+esc(x.file.name)+'">'+(x.kind==='image'?'<img src="'+esc(x.url)+'" alt="Miniatura de '+esc(x.file.name)+'">':ico('file'))+'<span>'+esc(x.file.name)+'</span></button><button type="button" class="v53-evidence-remove" data-action="v53RemoveDraft" data-index="'+i+'" aria-label="Quitar '+esc(x.file.name)+'">&times;</button></div>').join('');}
 function v53UpdateDraftGallery(){const row=q('v53-evidence-row');if(row)row.innerHTML=v53StagedGalleryMarkup();const count=q('v53-attach-count');if(count)count.textContent=(w.v53Files?.length||0)+' de 3';}
 function v53SavedGalleryShell(p){if(!p?.v53EvidenceMeta?.length||!p.v53EvidenceBatchId)return '';return '<div class="v53-saved-gallery" data-v53-batch="'+esc(p.v53EvidenceBatchId)+'" data-v53-payment="'+esc(p.id)+'"><div class="v53-saved-gallery-label">Evidencias adjuntas ('+p.v53EvidenceMeta.length+')</div><div class="v53-saved-gallery-row"><small class="muted">Cargando archivos...</small></div></div>';}
 function v53ClearSavedUrls(){for(const url of v53SavedUrls)URL.revokeObjectURL(url);v53SavedUrls=[];v53SavedCache.clear();}
@@ -13714,11 +13716,10 @@ function collectModal(){
  formField('Numero de operacion (opcional)','w-ref','text','','maxlength="80" placeholder="Ingresar si esta disponible"')+
  '<div class="v53-evidence-area"><div class="v53-evidence-heading"><div><strong>Evidencias del pago</strong><small>Capturas o documentos (JPG, PNG, WEBP y PDF)</small></div><span id="v53-attach-count">0 de 3</span></div>'+
  '<div class="v53-evidence-row" id="v53-evidence-row" aria-label="Archivos de evidencia">'+v53StagedGalleryMarkup()+'</div>'+
- '<div class="v53-attach-actions"><label for="w-evidence-files" class="v53-evidence-link">'+ico('plus','sm')+' Elegir archivos</label><label for="w-evidence-camera" class="v53-evidence-link">'+ico('calendar','sm')+' Tomar foto</label></div>'+
+ '<div class="v53-attach-actions"><label for="w-evidence-files" class="v94-evidence-action">'+ico('plus','sm')+' Adjuntar evidencia</label></div>'+
  '<input id="w-evidence-files" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/pdf" multiple class="v53-file-input" aria-label="Elegir hasta tres evidencias">'+
- '<input id="w-evidence-camera" type="file" accept="image/*" capture="environment" class="v53-file-input" aria-label="Tomar foto de evidencia">'+
- '<p class="v53-evidence-help">Puedes adjuntar hasta 3 archivos. Toca una miniatura para ampliarla.</p></div>'+
- '<div class="box-info gray">'+ico('info','sm')+'<span>Una captura no confirma el ingreso del dinero. Los pagos electronicos quedaran por verificar hasta revisar la cuenta receptora.</span></div></div>';
+ '<p class="v53-evidence-help">Hasta 3 archivos. Puedes tomar una foto o elegir un documento desde tu dispositivo.</p></div>'+
+ '<div class="box-info gray">'+ico('info','sm')+'<span>Registra el cobro después de comprobar que el dinero ingresó. Administración concilia los pagos posteriormente.</span></div></div>';
  return modalShell('COBROS DE RESERVAS','Registrar cobro',body,actionButton('Cancelar','closeModal','secondary')+actionButton('Guardar cobro','savePayment','green'),'v53-collect-sheet');
 }
 function verifyModal(){const p=get(data.v41Receipts,w.modalId),r=p&&rentalByReceipt(p);return modalShell('Verificaci\u00f3n bancaria','Revisar abono','<div class="card card-pad"><div class="card-sub">'+esc(client(r?.customerId)?.name||'Cliente')+' \u00b7 '+esc(p?.reference||'')+'</div><div class="detail-amount">'+fmt(p?.amount||0)+'</div></div>'+v53SavedGalleryShell(p)+'<div class="form-section" style="margin-top:14px">'+selectField('Cuenta receptora','w-account',(data.accounts||[]).filter(x=>x.status==='Activa'&&x.type!=='Efectivo').map(x=>({id:x.id,name:x.name})),1)+'<label class="checkrow"><input type="checkbox" id="w-verified">He comprobado el ingreso en la cuenta real autorizada y que no est\u00e1 duplicado.</label></div>',actionButton('Volver','closeModal','secondary')+actionButton('Confirmar ingreso','saveVerify','green'))}
@@ -15734,7 +15735,7 @@ function v65PayModal(){const s=v65Series(w.modalId);if(!s||!allowed(current(),s.
  formField('Número de operación (opcional)','v65-ref','text','','maxlength="80" placeholder="Solo si el cliente lo proporciona"')+
  selectField('Distribución','v65-mode',[{id:'auto',name:'Automática · fechas más próximas'},{id:'manual',name:'Elegir las fechas que se abonarán'}],'auto')+
  '<div id="v65-alloc-container">'+v65AllocMarkup(s,a.available,null)+'</div>'+ 
- '<div class="v53-evidence-area"><div class="v53-evidence-heading"><div><strong>Evidencias del pago</strong><small>Capturas o PDF, hasta 3 archivos</small></div><span id="v53-attach-count">0 de 3</span></div><div class="v53-evidence-row" id="v53-evidence-row">'+v53StagedGalleryMarkup()+'</div><div class="v53-attach-actions"><label for="w-evidence-files" class="v53-evidence-link">Adjuntar archivos</label></div><input id="w-evidence-files" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/pdf" multiple class="v53-file-input"></div>'+ 
+ '<div class="v53-evidence-area"><div class="v53-evidence-heading"><div><strong>Evidencias del pago</strong><small>Capturas o PDF, hasta 3 archivos</small></div><span id="v53-attach-count">0 de 3</span></div><div class="v53-evidence-row" id="v53-evidence-row">'+v53StagedGalleryMarkup()+'</div><div class="v53-attach-actions"><label for="w-evidence-files" class="v94-evidence-action">Adjuntar evidencia</label></div><input id="w-evidence-files" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/pdf" multiple class="v53-file-input"></div>'+ 
  '<div class="v65-confirm">El cobro en efectivo requiere caja abierta. Yape, Plin, transferencias y tarjetas aparecerán de inmediato como cobros registrados en el turno y su conciliación se realizará posteriormente desde Administración.</div></div>';
  return modalShell('COBROS · '+esc(s.code),'Abonar a programación',body,actionButton('Volver','closeModal','secondary')+'<button type="button" class="btn green" data-v65-action="save">Guardar abono</button>','v53-collect-sheet');}
 function v65ManualIds(){if(q('v65-mode')?.value!=='manual')return null;return new Set([...shadow.querySelectorAll('[data-v65-date]:checked')].map(x=>String(x.dataset.v65Date)))}
@@ -18746,7 +18747,7 @@ collect=function(args){const r=get(data.v48RentalOps,args?.rentalId),sess=sessio
 const v85PreviousSeriesCreate=v65CreateGroup;
 v65CreateGroup=function(...args){const g=v85PreviousSeriesCreate(...args);const s=v65Series(g.seriesId),sess=get(data.cashSessions,g.cashSessionId);let changed=0;for(const id of g.receiptIds||[]){const p=get(data.v41Receipts,id);if(!p||p.status!=='Por verificar')continue;p.status='Confirmado';p.confirmedAt=now();p.accountId=method(p.methodId)?.accountId||null;p.v85AcceptedById=current().id;p.v85AcceptedAt=p.confirmedAt;p.v85Reconciliation='Pendiente';p.verifiedById=current().id;p.verifiedBy=current().name||'';changed++;}if(changed){const first=get(data.v41Receipts,g.receiptIds[0]);if(first&&sess)addCashMove(sess,'Cobro',method(g.methodId)?.name||'Medio electrónico',g.amount,'COB-REC-'+String(g.id),'Abono de programación '+(s?.code||g.seriesCode),first.id);audit('Abono digital de programación confirmado por encargado; conciliación posterior',{seriesId:g.seriesId,groupId:g.id,amount:g.amount});persistAll();}return g;};
 const v85PrevCollectModal=collectModal;
-collectModal=function(){return v85PrevCollectModal().replace('<div class="box-info gray">'+ico('info','sm')+'<span>Una captura no confirma el ingreso del dinero. Los pagos electronicos quedaran por verificar hasta revisar la cuenta receptora.</span></div>','<p class="v85-payment-note">Registra el cobro cuando hayas comprobado que recibiste el dinero. La conciliación contable se realiza después.</p>')};
+collectModal=function(){return v85PrevCollectModal().replace('<div class="box-info gray">'+ico('info','sm')+'<span>Registra el cobro después de comprobar que el dinero ingresó. Administración concilia los pagos posteriormente.</span></div>','<p class="v85-payment-note">Registra el cobro cuando hayas comprobado que recibiste el dinero. La conciliación contable se realiza después.</p>')};
 const v85PrevSplitForm=v84SplitForm;
 v84SplitForm=function(){return v85PrevSplitForm().replace('Cada parte queda registrada por separado. El efectivo se confirma en caja; los pagos digitales deben verificarse.','Cada parte se registra por separado. Confirma los pagos recibidos antes de guardarlos; la conciliación contable es posterior.')};
 const v85PriorRender=workerRender;
@@ -19472,6 +19473,254 @@ const v90OriginalWorkerMount=mount;
 mount=function(...args){const r=v90OriginalWorkerMount(...args);v90BindFocus();v90Viewport();return r;};
 window.visualViewport?.addEventListener('resize',v90Viewport,{passive:true});
 window.addEventListener('resize',v90Viewport,{passive:true});
+
+/* Refinamiento de recibos, evidencias y devoluciones: permisos individuales. */
+const V94_CSS = `
+.v94-evidence-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:43px;border:1px solid #cfded5;border-radius:11px;background:#f6faf7;padding:10px 14px;color:#183c2d;font-size:12px;font-weight:700;cursor:pointer;max-width:100%}
+.v94-evidence-action:hover{border-color:#00bb56;background:#edfff2}
+.v53-evidence-row:empty{display:none!important}
+.v94-payments{margin-top:14px;border-top:1px solid #e8efe9;padding-top:12px}
+.v94-payments-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.v94-payments-head strong{font-size:12px;color:#20392d}
+.v94-pay-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #edf1ed}
+.v94-pay-item:last-child{border-bottom:0}
+.v94-pay-item-main{min-width:0;flex:1}
+.v94-pay-item-main b{font-size:12px;display:block}
+.v94-pay-item-main small{display:block;font-size:10px;color:#6b8177;margin-top:2px;line-height:1.45}
+.v94-pay-item-amt{font-size:12px;font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums}
+.v94-text-link{border:0;background:none;color:#207047;font-size:11px;font-weight:700;padding:5px 0;cursor:pointer}
+.v94-refund-intro{font-size:11px;color:#687c72;line-height:1.55;margin:10px 0 14px}
+.v94-refund-check{display:flex;align-items:flex-start;gap:10px;padding:12px;background:#f5f9f6;border-radius:12px;font-size:12px;line-height:1.4;margin:15px 0}
+.v94-refund-check input{flex:none;margin-top:2px;accent-color:#00b947;width:17px;height:17px}
+.v94-refund-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.v94-refund-files span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;border-radius:7px;border:1px solid #dfebe2;padding:6px;background:#f8fbf9}
+.v94-refund-extra{margin-top:12px}
+.v94-movement-source{font-size:10px;color:#6a8075}
+@media(max-width:580px){.v94-pay-item{gap:8px}.v94-refund-check{font-size:11px}.v94-evidence-action{width:100%}}
+`;
+function v94CanRefund(rec){
+ const u=current();
+ return !!rec && allowed(u,rec.venueId) && authorized(u,'refund',rec.venueId)
+   && authorized(u,'cash',rec.venueId) && (role()==='desk'||role()==='sales');
+}
+// El recibo conserva los movimientos, pero la accion depende del permiso configurado.
+const v94PreviousReceiptDetail=v84ReceiptDetail;
+v84ReceiptDetail=function(){
+ const html=v94PreviousReceiptDetail();
+ const rec=v84FindReceipt(w.modalId);
+ if(!rec)return html;
+ const wrap=document.createElement('div');wrap.innerHTML=html;
+ const permitted=v94CanRefund(rec);
+ wrap.querySelectorAll('[data-v84="request"]').forEach(el=>{
+   if(!permitted)el.remove();else{el.textContent='Devolver dinero';el.setAttribute('aria-label','Registrar devolucion de dinero');}
+ });
+ wrap.querySelectorAll('[data-v84="execute"]').forEach(el=>{
+   if(!permitted)el.remove();else el.textContent='Registrar devolucion';
+ });
+ // Permitir resolver registros anteriores sin nueva aprobacion, si el permiso ya fue concedido.
+ if(permitted){
+   for(const ref of v84Refunds(rec).filter(x=>x.status==='Pendiente')){
+     const lines=[...wrap.querySelectorAll('.v84-line')];
+     const line=lines.find(el=>el.textContent?.includes(ref.code));
+     if(line&&!line.querySelector('[data-v84="execute"]')){
+       const button=document.createElement('button');button.type='button';button.className='v84-mini-link';button.dataset.v84='execute';button.dataset.id=String(ref.id);button.textContent='Registrar devolución';
+       line.lastElementChild?.appendChild(button);
+     }
+   }
+ }
+ // En el recibo constan el pago original, el medio usado al devolver y la evidencia.
+ for(const refund of v84Refunds(rec)){
+   const row=[...wrap.querySelectorAll('.v84-line')].find(el=>el.querySelector('b')?.textContent?.trim()===refund.code);
+   if(!row)continue;
+   const meta=row.querySelector('.v84-meta');
+   const allocationText=(refund.allocations||[]).map(a=>{
+     const initial=method(a.originalMethodId||get(data.v41Receipts,a.paymentId)?.methodId)?.name||'Pago original';
+     const actual=method(a.methodId)?.name||'Medio de devolución';
+     return initial+(initial===actual?'':' → '+actual)+' · '+fmt(a.amount);
+   }).join(' / ');
+   if(meta)meta.textContent+=' · '+allocationText+(refund.executedById?' · '+actorName(refund.executedById):'');
+   if(refund.changeMethodReason&&meta){const note=document.createElement('div');note.className='v84-meta';note.textContent='Cambio de medio: '+refund.changeMethodReason;meta.after(note);}
+   if(refund.v53EvidenceBatchId&&refund.v53EvidenceMeta?.length){
+     row.insertAdjacentHTML('afterend',v53SavedGalleryShell(refund));
+   }
+ }
+ return wrap.innerHTML;
+};
+// Formulario corto: mismo medio por defecto, varios pagos de origen y una salida real.
+v84RefundRequestModal=function(){
+ const d=w.v84RefundDraft,rec=d&&v84FindReceipt(d.receiptId);
+ if(!rec||!v94CanRefund(rec))return modalShell('Devoluciones','No disponible','No tienes permiso para realizar esta devolucion.');
+ const cap=v84RefundCapacity(rec),methods=(data.methods||[]).filter(m=>m.status==='Activo');
+ const changeMethod=d.lines.some(line=>String(line.methodId)!==String(get(data.v41Receipts,line.paymentId)?.methodId));
+ const rows=d.lines.map(line=>{
+  const p=get(data.v41Receipts,line.paymentId),prefix='v84-ref-'+line.paymentId;
+  return '<div class="v84-split-entry"><div class="v84-split-head"><strong>'+esc(method(p?.methodId)?.name||'Medio de pago')+' · '+fmt(p?.amount||0)+'</strong><span class="v94-movement-source">Pago original</span></div>'+
+    '<div class="v84-split-grid">'+formField('A devolver (S/)',prefix+'-amt','number',line.amount,'min="0" max="'+v84RefundRemaining(p)+'" step="0.01" inputmode="decimal"')+
+    selectField('Medio de devolución',prefix+'-method',methods.map(m=>({id:m.id,name:m.name})),line.methodId,'data-v94-refund-method="1"')+'</div>'+
+    '<div class="v84-helper">Disponible en este pago: '+fmt(v84RefundRemaining(p))+'</div></div>';
+ }).join('');
+ const files=w.v84RefundFiles||[],extra='<div id="v94-method-reason-wrap" class="v94-refund-extra" style="display:'+(changeMethod?'block':'none')+'">'+
+   '<div class="field"><label for="v94-method-reason">Motivo del cambio de medio</label><textarea id="v94-method-reason" rows="2" placeholder="Indica por qué se devuelve por un medio diferente">'+esc(d.changeReason||'')+'</textarea></div></div>';
+ const body='<div class="v53-collect-summary"><div><small>'+esc(rec.code)+'</small><h3>'+esc(client(rec.customerId)?.name||'Cliente')+'</h3></div><div><small>Disponible para devolver</small><strong>'+fmt(cap)+'</strong></div></div>'+
+  '<div id="v84-ref-error" class="v84-err" role="alert"></div><p class="v94-refund-intro">Elige cuánto devolver de cada pago. Se propone el medio original. No se borrarán los cobros registrados.</p>'+rows+
+  extra+'<div class="field"><label for="v84-ref-reason">Motivo de la devolución</label><textarea id="v84-ref-reason" rows="2" placeholder="Motivo o política aplicable">'+esc(d.reason||'')+'</textarea></div>'+
+  formField('Referencia (opcional)','v94-ref-reference','text',d.reference||'','maxlength="80" placeholder="Número de operación si existe"')+
+  '<div class="field" style="margin-top:12px"><label>Evidencia (opcional)</label><label class="v94-evidence-action" for="v94-refund-files">'+ico('plus','sm')+' Adjuntar evidencia</label><input type="file" id="v94-refund-files" class="v53-file-input" data-v84-refund-evidence="1" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" multiple><div class="v94-refund-files">'+files.map(f=>'<span>'+esc(f.file.name)+'</span>').join('')+'</div><small class="v84-helper">'+files.length+' de 3 archivos</small></div>'+
+  '<label class="v94-refund-check"><input id="v94-ref-confirm" type="checkbox" '+(d.confirmed?'checked':'')+'><span>Confirmo que el dinero ya fue entregado o transferido al cliente por los medios indicados.</span></label>';
+ return modalShell('DEVOLUCIONES','Devolver dinero',body,actionButton('Volver','v84RefundBack','secondary')+'<button type="button" class="btn green" data-v84="refundSave">Registrar devolución</button>','v53-collect-sheet');
+};
+// Captura previa para conservar datos si iOS vuelve a dibujar el selector de archivos.
+function v94CaptureRefundExtra(){
+ const d=w.v84RefundDraft;if(!d)return;
+ v84RefundCapture();
+ d.changeReason=q('v94-method-reason')?.value??d.changeReason??'';
+ d.reference=q('v94-ref-reference')?.value??d.reference??'';
+ d.confirmed=q('v94-ref-confirm')?.checked??d.confirmed??false;
+}
+// Validacion de caja, pagos originales y limite de importe: sin autorizacion adicional.
+function v94CheckRefundAllocations(rec,lines,excludingId){
+ assert(v94CanRefund(rec),'El Administrador General no ha habilitado el permiso de devoluciones.');
+ const sess=session();
+ assert(sess&&Number(sess.venueId)===Number(rec.venueId),'Debes tener abierto tu turno y caja de esta sede.');
+ const raw=v84RawPayments(rec),seen=new Set(),allocations=[];let total=0;
+ for(const line of lines){
+  const p=get(data.v41Receipts,line.paymentId),n=Number(line.amount),m=method(line.methodId);
+  assert(p?.status==='Confirmado'&&raw.some(x=>String(x.id)===String(p.id)),'El pago original no está confirmado o no pertenece a este recibo.');
+  assert(Number.isFinite(n)&&n>=0&&Math.abs(n*100-Math.round(n*100))<.001,'Importe de devolución inválido.');
+  assert(m&&m.status==='Activo','Selecciona un medio de devolución activo.');
+  assert(!seen.has(String(p.id)),'El pago original figura dos veces.');seen.add(String(p.id));
+  const reserved=(data.v84Refunds||[]).filter(x=>String(x.id)!==String(excludingId||'')&&['Realizada','Pendiente','Aprobada'].includes(x.status))
+    .flatMap(x=>x.allocations||[]).filter(x=>String(x.paymentId)===String(p.id)).reduce((s,x)=>s+Number(x.amount||0),0);
+  assert(n<=v84Money(Number(p.amount)-reserved)+.005,'El importe supera el dinero disponible de un pago original.');
+  if(n>.005){allocations.push({paymentId:p.id,amount:v84Money(n),originalMethodId:p.methodId,methodId:m.id,rentalId:v84AllRentals(rec).find(r=>'manual:'+r.chargeId===p.chargeRef)?.id||null});total+=n;}
+ }
+ total=v84Money(total);assert(total>.005,'Indica un importe a devolver mayor que cero.');
+ const state=v84GetState(rec);
+ const capacity=excludingId?state.excess:v84RefundCapacity(rec);
+ assert(total<=capacity+.005,'La devolución excede el saldo disponible a favor del cliente.');
+ const cashNeeded=v84Money(allocations.filter(x=>/efectivo/i.test(method(x.methodId)?.name||'')).reduce((s,x)=>s+Number(x.amount),0));
+ assert(cashNeeded<=Number(cashSummary(sess)?.expected||0)+.005,'No hay suficiente efectivo en esta caja para realizar la devolución.');
+ return {sess,allocations,total};
+}
+async function v94CommitRefund(ref,files=[],reference=''){
+ const rec=v84FindReceipt(ref.receiptId);
+ assert(rec&&allowed(current(),rec.venueId),'No se encontró el recibo.');
+ const checks=v94CheckRefundAllocations(rec,ref.allocations,ref.isNew?null:ref.id);
+ assert(Math.abs(checks.total-Number(ref.amount))<.01,'El importe de la devolución ha cambiado.');
+ const batch=files.length?v53BatchId():'';
+ if(batch)await v53EvidenceWrite(batch,files);
+ const oldMovements=data.cashMovements.length;
+ const wasNew=!!ref.isNew;
+ try{
+   if(wasNew){data.v84Refunds.push(ref);delete ref.isNew;}
+   for(const [i,x] of ref.allocations.entries()){
+     const original=get(data.v41Receipts,x.paymentId),m=method(x.methodId);
+     const cashMethod=/efectivo/i.test(m?.name||'')?'Efectivo':m.name;
+     const mov=addCashMove(checks.sess,'Reembolso',cashMethod,x.amount,ref.code+'-'+(i+1),'Devolución '+ref.code+' · cobro '+String(original?.id||''));
+     mov.v84RefundId=ref.id;mov.v84OriginalPaymentId=x.paymentId;mov.v84CommercialReceiptId=rec.id;
+   }
+   ref.status='Realizada';ref.executedAt=now();ref.executedById=current().id;ref.cashSessionId=checks.sess.id;ref.reference=String(reference||'').trim();
+   ref.v53EvidenceBatchId=batch;ref.v53EvidenceMeta=files.map((f,i)=>({slot:i,name:f.file.name,type:f.file.type,size:f.file.size}));
+   for(const r of v84AllRentals(rec))if(r.status==='Cancelada'&&v84GetState(rec).excess<.005)r.v84Resolution='Resuelta';
+   audit('Devolución realizada directamente por permiso',{refundId:ref.id,receiptId:rec.id,amount:ref.amount,cashSessionId:checks.sess.id,originalMethods:ref.allocations.map(x=>x.originalMethodId),returnMethods:ref.allocations.map(x=>x.methodId)});
+   persistAll();
+   w.v84RefundFiles=[];w.v84RefundDraft=null;w.modal='v84Receipt';w.modalId=rec.id;w.page='v84Receipts';workerRender();fire('Devolución '+ref.code+' registrada por '+fmt(ref.amount)+'.');
+ }catch(err){
+   data.cashMovements.splice(oldMovements);
+   if(wasNew){const ix=data.v84Refunds.indexOf(ref);if(ix>=0)data.v84Refunds.splice(ix,1);}
+   if(batch)try{await v53EvidenceDelete(batch)}catch(_){}
+   throw err;
+ }
+}
+async function v94SubmitDirectRefund(){
+ const d=w.v84RefundDraft;assert(d,'No hay una devolución abierta.');
+ const rec=v84FindReceipt(d.receiptId);assert(rec&&v94CanRefund(rec),'No tienes permiso para devolver dinero.');
+ v94CaptureRefundExtra();
+ const reason=String(d.reason||'').trim(),altReason=String(d.changeReason||'').trim();
+ assert(reason.length>=6,'Indica el motivo de la devolución (mínimo 6 caracteres).');
+ assert(d.confirmed,'Confirma que realizaste la entrega efectiva del dinero.');
+ assert(String(d.reference||'').length<=80,'La referencia supera 80 caracteres.');
+ const files=w.v84RefundFiles||[];assert(files.length<=3,'Máximo tres evidencias.');
+ const changed=d.lines.some(line=>Number(line.amount)>0&&String(line.methodId)!==String(get(data.v41Receipts,line.paymentId)?.methodId));
+ if(changed)assert(altReason.length>=6,'Explica por qué se devuelve por un medio distinto del pago original.');
+ const checked=v94CheckRefundAllocations(rec,d.lines);
+ const ref={id:'v84-ref-'+idNew(),code:v84CodeSeq('DEV'),receiptId:rec.id,venueId:rec.venueId,customerId:rec.customerId,
+  amount:checked.total,reason,changeMethodReason:changed?altReason:'',allocations:checked.allocations,status:'Realizada',createdAt:now(),requestedById:current().id,isNew:true};
+ await v94CommitRefund(ref,files,d.reference);
+}
+// La accion se confirma en un solo paso. El permiso se configura en Usuarios y sedes.
+v84RefundSave=function(){
+ if(w.v94RefundBusy)return;w.v94RefundBusy=true;
+ const button=shadow?.querySelector('[data-v84="refundSave"]');if(button)button.disabled=true;
+ void v94SubmitDirectRefund().catch(err=>{
+  const elem=q('v84-ref-error');if(elem){elem.textContent=err.message||'No se pudo registrar la devolución.';elem.style.display='block';elem.scrollIntoView({block:'nearest'});}else fire(err.message||'No se pudo registrar la devolución.');
+ }).finally(()=>{w.v94RefundBusy=false;const currentButton=shadow?.querySelector('[data-v84="refundSave"]');if(currentButton)currentButton.disabled=false;});
+};
+// Devoluciones antiguas que quedaron pendientes: el empleado ahora puede ejecutarlas por su permiso.
+const v94OldExecuteModal=v84ReturnExecuteModal;
+v84ReturnExecuteModal=function(){
+ const ref=(data.v84Refunds||[]).find(x=>String(x.id)===String(w.modalId));
+ if(!ref||!['Pendiente','Aprobada'].includes(ref.status)||!v94CanRefund(v84FindReceipt(ref.receiptId)))
+   return modalShell('Devoluciones','No disponible','No hay autorización de acceso para registrar esta devolución.');
+ const prior=ref.status;ref.status='Aprobada';
+ try{return v94OldExecuteModal().replace('DEVOLUCIÓN AUTORIZADA','DEVOLUCIÓN').replace('Autorizado</small>','Por devolver</small>');}
+ finally{ref.status=prior;}
+};
+v84ExecuteRefund=async function(){
+ const ref=(data.v84Refunds||[]).find(x=>String(x.id)===String(w.modalId));
+ assert(ref&&['Pendiente','Aprobada'].includes(ref.status),'La devolución ya fue realizada o no está disponible.');
+ assert(v94CanRefund(v84FindReceipt(ref.receiptId)),'Tu usuario no tiene el permiso de devoluciones.');
+ assert(q('v84-exec-confirm')?.checked,'Confirma que el dinero fue entregado o transferido.');
+ const files=w.v84RefundFiles||[];assert(files.length<=3,'Máximo tres evidencias por devolución.');
+ await v94CommitRefund(ref,files,q('v84-refund-ref')?.value||'');
+};
+// Auditoría de Administración, sin bandeja de aprobaciones adicionales.
+v84RefundAdminMarkup=function(){
+ const rs=(data.v84Refunds||[]).slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,30);
+ return '<section class="v84-admin-card"><h3>Historial de devoluciones</h3><p style="font-size:11px;color:#728680;margin:0 0 12px">Las devoluciones son ejecutadas por usuarios con permiso habilitado. Consulta el responsable y los medios empleados.</p>'+
+ (rs.length?rs.map(ref=>{const rec=v84FindReceipt(ref.receiptId),methods=ref.allocations.map(x=>method(x.methodId)?.name).filter(Boolean).join(' + ');return '<div class="v84-admin-item"><div><b>'+esc(ref.code)+' · '+fmt(ref.amount)+'</b> · '+esc(ref.status)+'<small>'+esc(rec?.code||'')+' · '+esc(client(ref.customerId)?.name||'Cliente')+'</small><small>'+esc(methods||'Sin medio')+' · '+esc(actorName(ref.executedById||ref.requestedById))+'</small></div></div>';}).join(''):'<div style="font-size:11px;color:#789087">Todavía no hay devoluciones.</div>')+'</section>';
+};
+// El detalle muestra el historial breve junto al resumen economico, sin acceso duplicado.
+const v94OriginalDetailModal=detailModal;
+detailModal=function(){
+ const html=v94OriginalDetailModal();
+ const r=get(data.v48RentalOps,w.modalId);if(!r||r.status==='Cotizada')return html;
+ const wrap=document.createElement('div');wrap.innerHTML=html;
+ const finance=wrap.querySelector('.v52-detail-block:has(.v52-summary)');
+ if(!finance)return html;
+ const title=finance.querySelector('.row.between:has(.v52-detail-title)');
+ if(title&&/Pago de la reserva/i.test(title.textContent||''))title.remove();
+ finance.querySelectorAll('.v82-latest').forEach(n=>n.remove());
+ const pays=v84RawPayments(v84ReceiptForRental(r)).filter(p=>String(p.chargeRef)==='manual:'+String(r.chargeId)).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+ const rec=v84ReceiptForRental(r);
+ if(pays.length){
+  const parent=document.createElement('div');parent.className='v94-payments';
+  parent.innerHTML='<div class="v94-payments-head"><strong>Pagos registrados ('+pays.length+')</strong>'+(pays.length>2&&rec?'<button type="button" class="v94-text-link" data-v84="open" data-id="'+esc(rec.id)+'">Ver todos</button>':'')+'</div>'+
+    pays.slice(0,2).map(p=>'<div class="v94-pay-item"><div class="v94-pay-item-main"><b>'+esc(method(p.methodId)?.name||'Medio')+' · '+esc(p.status)+'</b><small>'+esc(v84DateTime(p.createdAt))+(p.v53EvidenceMeta?.length?' · '+p.v53EvidenceMeta.length+' evidencia(s)':'')+'</small></div><div class="v94-pay-item-amt">'+fmt(p.amount)+'</div></div>').join('');
+  finance.appendChild(parent);
+ }
+ return wrap.innerHTML;
+};
+const v94OriginalWorkerRender=workerRender;
+workerRender=function(...args){
+ v94OriginalWorkerRender(...args);
+ if(shadow&&!shadow.getElementById('v94-refinement-css')){const st=document.createElement('style');st.id='v94-refinement-css';st.textContent=V94_CSS;shadow.appendChild(st);}
+};
+const v94OriginalWorkChange=onWorkChange;
+onWorkChange=function(event){
+ const el=event.target;
+ if(el?.dataset?.v84RefundEvidence){v94CaptureRefundExtra();return v94OriginalWorkChange(event);}
+ if(el?.dataset?.v94RefundMethod){v94CaptureRefundExtra();const d=w.v84RefundDraft;const changed=d?.lines.some(line=>Number(line.amount)>0&&String(line.methodId)!==String(get(data.v41Receipts,line.paymentId)?.methodId));const wrap=q('v94-method-reason-wrap');if(wrap)wrap.style.display=changed?'block':'none';return;}
+ return v94OriginalWorkChange(event);
+};
+// Reiniciar archivos al abrir una nueva devolucion, nunca al cambiar un selector.
+const v94OriginalStartRefund=v84StartRefund;
+v84StartRefund=function(rec){
+ assert(v94CanRefund(rec),'Administrador General debe habilitar el permiso «Realizar devoluciones».');
+ w.v84RefundFiles=[];
+ return v94OriginalStartRefund(rec);
+};
+
 
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
