@@ -19380,7 +19380,7 @@ function v89AdminAttendancePage(){const employees=v89OperatorUsers(),selected=em
  '<div class="v89-admin-grid"><div class="v89-admin-stat"><small>Días con apertura</small><b>'+opened+'</b></div><div class="v89-admin-stat"><small>Aperturas tardías</small><b>'+late+'</b></div><div class="v89-admin-stat"><small>Cierres pendientes</small><b>'+pending+'</b></div><div class="v89-admin-stat"><small>Días sin apertura</small><b>'+missing+'</b></div><div class="v89-admin-stat"><small>Tiempo registrado</small><b>'+v89Hours(totalMinutes)+'</b></div></div>'+
  '<section class="v89-admin-box"><h3 style="margin:0 0 12px;font-size:16px">Registro mensual</h3><div class="v89-admin-table-wrap"><table class="v89-admin-table"><thead><tr><th>Fecha</th><th>Encargado</th><th>Sede</th><th>Horario asignado</th><th>Apertura / ingreso</th><th>Cierre / salida</th><th>Duración</th><th>Turnos</th><th>Observación</th></tr></thead><tbody>'+
  (rows.map(r=>'<tr><td><b>'+esc(r.day)+'</b></td><td>'+esc(r.user.name)+'</td><td>'+esc(r.site)+'</td><td>'+esc(r.shift)+'</td><td>'+esc(r.first)+'</td><td>'+esc(r.last)+'</td><td>'+v89Hours(r.minutes)+'</td><td>'+r.n+'</td><td>'+status(r)+'</td></tr>').join('')||'<tr><td colspan="9">No hay registros para los filtros seleccionados.</td></tr>')+'</tbody></table></div><p style="margin-top:12px">«Sin apertura» indica ausencia de registro, no acredita por sí solo una falta laboral. Las incidencias y remuneraciones se revisan por separado.</p></section>'+
- +'<section class="v89-admin-box"><h3 style="margin:0 0 12px;font-size:16px">Resumen por encargado</h3><div class="v89-admin-table-wrap"><table class="v89-admin-table"><thead><tr><th>Encargado</th><th>Días programados</th><th>Días con apertura</th><th>Tiempo registrado</th><th>Tardanzas</th><th>Sin apertura</th><th>Cierres pendientes</th></tr></thead><tbody>'+byEmployee.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td>'+x.planned+'</td><td>'+x.opened+'</td><td>'+v89Hours(x.minutes)+'</td><td>'+x.late+'</td><td>'+x.missing+'</td><td>'+x.pending+'</td></tr>').join('')+'</tbody></table></div></section>'+
+ '<section class="v89-admin-box"><h3 style="margin:0 0 12px;font-size:16px">Resumen por encargado</h3><div class="v89-admin-table-wrap"><table class="v89-admin-table"><thead><tr><th>Encargado</th><th>Días programados</th><th>Días con apertura</th><th>Tiempo registrado</th><th>Tardanzas</th><th>Sin apertura</th><th>Cierres pendientes</th></tr></thead><tbody>'+byEmployee.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td>'+x.planned+'</td><td>'+x.opened+'</td><td>'+v89Hours(x.minutes)+'</td><td>'+x.late+'</td><td>'+x.missing+'</td><td>'+x.pending+'</td></tr>').join('')+'</tbody></table></div></section>'+
  '<section class="v89-admin-box"><h3 style="margin:0 0 8px;font-size:16px">Asignar horario de referencia</h3><div class="v89-admin-controls"><label>Encargado<select id="v89-edit-user">'+opts(employees.map(u=>[u.id,u.name]),selected?.id||'')+'</select></label><label>Sede<select id="v89-edit-site">'+opts(siteOptions,schedule?.venueId||selected?.primaryVenueId||'')+'</select></label><label>Inicio<input id="v89-edit-start" type="time" value="'+esc(schedule?.start||'08:00')+'"></label><label>Fin<input id="v89-edit-end" type="time" value="'+esc(schedule?.end||'16:00')+'"></label></div><div class="v89-admin-days">'+['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((label,i)=>'<label><input type="checkbox" data-v89-weekday="'+(i+1)+'" '+((schedule?.days||[1,2,3,4,5]).includes(i+1)?'checked':'')+'> '+label+'</label>').join('')+'</div><button type="button" class="v89-admin-btn" data-v89-admin="save">Guardar horario</button><p style="margin-top:10px">La apertura fuera de horario queda registrada. No genera automáticamente horas extras ni cambia el horario asignado.</p></section></div>';
 }
 const v89AdminGroup=menuGroups.find(g=>g.label==='SISTEMA Y CONTROL'||g.label==='ADMINISTRACIÓN DEL SISTEMA'||g.label==='ADMINISTRACIÓN');
@@ -19411,6 +19411,67 @@ document.addEventListener('click',e=>{const btn=e.target?.closest?.('[data-v89-a
 },true);
 Object.assign(window.V51,{openCash,closeCash});
 window.ElevaTurnos={getCurrent:()=>({userId:current().id,role:role(),open:!!session(),sessionId:session()?.id||null}),monthly:()=>role()==='admin'?v89AdminRows():[],schedule:(id)=>role()==='admin'||String(id)===String(current().id)?data.v89ShiftSchedules[String(id)]||null:null};
+
+
+/* ELEVA SPORT | Disposicion movil estable: navegacion fija en flujo de app.
+   La navegacion tiene espacio propio, la pagina es la unica zona desplazable.
+   Evita superposicion en Safari iOS al cambiar las barras del navegador. */
+const V90_WORKER_CSS = `
+:host([data-v90-layout="app"]){height:var(--v90-visual-height,100dvh)!important;inset:0 0 auto 0!important;overflow:hidden!important;overscroll-behavior:none!important}
+:host([data-v90-layout="gate"]){height:var(--v90-visual-height,100dvh)!important;inset:0 0 auto 0!important;overflow-y:auto!important;overscroll-behavior:contain!important}
+:host([data-v90-layout="app"]) #v51-worker-app{height:100%!important;min-height:0!important;position:relative;overflow:hidden}
+:host([data-v90-layout="app"]) #v51-worker-app .overlay{position:absolute!important;inset:0!important;height:100%!important;max-height:100%!important;z-index:80}
+@media(max-width:1039px){
+  :host([data-v90-layout="app"]) #v51-worker-app .app-shell{height:100%!important;min-height:0!important;max-height:100%!important;overflow:hidden!important;display:flex!important}
+  :host([data-v90-layout="app"]) #v51-worker-app .main-col{height:100%!important;min-height:0!important;max-height:100%!important;display:flex!important;flex-direction:column!important;flex:1 1 auto!important;padding-bottom:0!important;overflow:hidden!important}
+  :host([data-v90-layout="app"]) #v51-worker-app .topbar{flex:0 0 auto!important;position:relative!important;top:auto!important;width:100%;z-index:30}
+  :host([data-v90-layout="app"]) #v51-worker-app #v51-page{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch;padding-bottom:max(28px,env(safe-area-inset-bottom,0px))!important;scroll-padding-bottom:22px;box-sizing:border-box;width:100%}
+  :host([data-v90-layout="app"]) #v51-worker-app .bottom-nav{display:flex!important;position:relative!important;inset:auto!important;bottom:auto!important;left:auto!important;right:auto!important;transform:none!important;flex:0 0 auto!important;box-sizing:border-box!important;height:calc(70px + env(safe-area-inset-bottom,0px))!important;min-height:70px!important;width:100%!important;max-width:100%!important;margin:0!important;padding:5px 4px calc(6px + env(safe-area-inset-bottom,0px))!important;z-index:35;box-shadow:0 -3px 14px rgba(12,31,34,.045)}
+  :host([data-v90-layout="app"]) #v51-worker-app .bottom-nav button{min-height:52px;touch-action:manipulation}
+  :host([data-v90-layout="app"]) #v51-worker-app .toast{bottom:calc(80px + env(safe-area-inset-bottom,0px))!important;z-index:100}
+  :host([data-v90-layout="app"]) #v51-worker-app:has(.overlay) .bottom-nav{visibility:hidden}
+  :host([data-v90-layout="app"][data-v90-editing="yes"]) #v51-worker-app .bottom-nav{display:none!important}
+  :host([data-v90-layout="app"][data-v90-editing="yes"]) #v51-worker-app #v51-page{padding-bottom:20px!important}
+}
+@media(min-width:1040px){
+  :host([data-v90-layout="app"]) #v51-worker-app{overflow-y:auto}
+  :host([data-v90-layout="app"]) #v51-worker-app .app-shell{min-height:100%;}
+}
+`;
+function v90Style(){if(!shadow||shadow.getElementById('eleva-nav-estable'))return;
+ const style=document.createElement('style');style.id='eleva-nav-estable';style.textContent=V90_WORKER_CSS;shadow.appendChild(style);
+}
+function v90Viewport(){const host=shadow?.host;if(!host)return;
+ const vv=window.visualViewport;
+ const height=vv?.height&&Number.isFinite(vv.height)?vv.height:window.innerHeight;
+ if(height>200)host.style.setProperty('--v90-visual-height',Math.round(height)+'px');
+}
+const v90OriginalWorkerRender=workerRender;
+workerRender=function(...args){
+ // El encargado presencial entra a Reservas, nunca al tablero redundante "Mi turno".
+ if(role()==='desk'&&session()&&(w.page==='home'||!w.page))w.page='reservations';
+ v90OriginalWorkerRender(...args);
+ if(!shadow)return;
+ v90Style();
+ shadow.host.dataset.v90Layout=(role()==='desk'&&!session())?'gate':'app';
+ v90Viewport();
+};
+// Ocultar el menu al escribir, sin desplazarlo encima del teclado.
+function v90Editing(){const host=shadow?.host;if(!host)return;
+ const active=shadow.activeElement;
+ if(active?.matches?.('input,select,textarea,[contenteditable="true"]'))host.dataset.v90Editing='yes';
+ else delete host.dataset.v90Editing;
+}
+const v90FocusListener={};
+function v90BindFocus(){if(!shadow||v90FocusListener.bound===shadow)return;
+ shadow.addEventListener('focusin',v90Editing,true);
+ shadow.addEventListener('focusout',()=>queueMicrotask(v90Editing),true);
+ v90FocusListener.bound=shadow;
+}
+const v90OriginalWorkerMount=mount;
+mount=function(...args){const r=v90OriginalWorkerMount(...args);v90BindFocus();v90Viewport();return r;};
+window.visualViewport?.addEventListener('resize',v90Viewport,{passive:true});
+window.addEventListener('resize',v90Viewport,{passive:true});
 
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
