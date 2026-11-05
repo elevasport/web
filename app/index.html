@@ -16769,6 +16769,7 @@ window.V68Client={_test:{rentals:v68Rentals,receipts:v68Receipts,stats:v68Stats,
  .v72-internal-card strong{display:block;font-size:12px}
  .v72-internal-card small{color:#657983;font-size:10.5px;line-height:1.55;display:block;margin-top:3px}
  .v72-internal-card .badge{margin-left:auto}
+ .v95-internal-booking.v95-block .v52-booking-line{background:#be9850}
  .v72-history{font-size:11px;color:#667f80;line-height:1.6}
  .v72-admin-panel{margin:18px 0;background:#fff;border:1px solid #dce5e2;border-radius:15px;padding:19px}
  .v72-admin-panel h3{font-size:17px;color:#14252f;margin:0 0 5px}
@@ -16861,9 +16862,26 @@ window.V68Client={_test:{rentals:v68Rentals,receipts:v68Receipts,stats:v68Stats,
   audit('Uso '+r.code+' · '+next,{internalId:r.id,venueId:r.venueId,reason:text});persistAll();return r;
  }
  function matchesSchedule(x){return Number(x.venueId)===Number(w.siteId)&&x.status==='Activo'&&x.date===w.date;}
- function renderCard(r){return '<button type="button" class="v72-internal-card '+(r.kind==='block'?'block':'')+'" data-action="v72Detail" data-id="'+esc(r.id)+'"><span class="v72-line"></span><span style="flex:1;min-width:0"><strong>'+esc(r.code)+' · '+esc(r.kind==='block'?blocks[r.blockReason]||'Bloqueo':types[r.activity]||'Uso interno')+'</strong><small>'+esc(r.startTime+'–'+timeEnd(r))+' · '+esc(r.resourceIds.map(id=>resource(id)?.name||'Cancha').join(', '))+'<br>Responsable: '+esc(r.responsible)+'</small></span><span class="badge '+(r.status==='Pendiente'?'warn':'gray')+'">'+(r.status==='Pendiente'?'Por autorizar':r.kind==='block'?'Bloqueada':'Interno')+'</span></button>';}
+ function v95InternalCard(r){
+  // Same structure as ALQ cards: start/end | divider | code/name/space/duration | one discreet pill.
+  // Uses the actual stored duration; no commercial amounts or payments are created.
+  const name=r.kind==='block'?(blocks[r.blockReason]||'Bloqueo'):(types[r.activity]||'Uso interno');
+  const rooms=(r.resourceIds||[]).map(id=>resource(id)?.name||'Cancha').join(' + ')||'Espacio';
+  const duration=v52Duration(Number(r.duration)||0);
+  const detail=(w.resView==='list'?asDate(r.date)+' · ':'')+rooms+' · '+duration;
+  const label=r.status==='Pendiente'?'Por autorizar':r.kind==='block'?'Bloqueo':'Interno';
+  const statusClass=r.status==='Pendiente'?'wait':'muted';
+  return '<button type="button" class="v52-booking-card v95-internal-booking '+(r.kind==='block'?'v95-block':'')+'" data-action="v72Detail" data-id="'+esc(r.id)+'" aria-label="Abrir '+esc(r.code)+' · '+esc(name)+'">'+
+    '<span class="v52-booking-time"><strong>'+esc(r.startTime)+'</strong><small>'+esc(timeEnd(r))+'</small></span>'+
+    '<span class="v52-booking-line"></span>'+
+    '<span class="v52-booking-main"><span class="v52-booking-code">'+esc(r.code)+'</span><span class="v52-booking-name">'+esc(name)+'</span><span class="v52-booking-info">'+esc(detail)+'</span></span>'+
+    '<span class="v52-booking-pills"><span class="v52-pill '+statusClass+'">'+label+'</span></span></button>';
+ }
+ function renderCard(r){return v95InternalCard(r);}
+ window.__elevaInternalUnifiedCard=v95InternalCard;
+
  const oldChoice=v55ReservationChoice;
- v55ReservationChoice=function(){const base=oldChoice();return base.replace('</div></div><div class="sheet-foot">','</div><div class="v72-choice-divider">Uso propio de instalaciones</div><button type="button" class="v55-choice-item" data-action="v72New"><span class="v55-choice-ico">'+ico('grid')+'</span><span class="v55-choice-text"><strong>Uso interno / bloqueo operativo</strong><small>Actividades de Eleva o mantenimiento. Sin venta ni cobro.</small></span>'+ico('chevron')+'</button></div><div class="sheet-foot">');};
+ v55ReservationChoice=function(){const base=oldChoice();return base.replace('</div></div><div class="sheet-foot">','</div><button type="button" class="v55-choice-item" data-action="v72New"><span class="v55-choice-ico">'+ico('grid')+'</span><span class="v55-choice-text"><strong>Uso interno / bloqueo operativo</strong><small>Actividades de Eleva o mantenimiento. Sin venta ni cobro.</small></span>'+ico('chevron')+'</button></div><div class="sheet-foot">');};
  function workerDraft(){return w.v72Draft||(w.v72Draft=baseDraft());}
  function readForm(){const d={...workerDraft()};const value=id=>shadow.getElementById('v72-'+id)?.value;
   for(const k of ['activity','blockReason','date','startTime','repeat','endDate','responsible','reason'])if(value(k)!=null)d[k]=value(k);
@@ -16902,8 +16920,7 @@ window.V68Client={_test:{rentals:v68Rentals,receipts:v68Receipts,stats:v68Stats,
  const oldTodays=todays;
  todays=function(){const result=oldTodays();for(const r of list().filter(matchesSchedule)){result.push({id:r.id,r:{code:r.code,resourceId:r.resourceIds[0],status:r.status,customerId:null,createdById:r.createdById},resourceId:r.resourceIds[0],resourceIds:r.resourceIds,venueId:r.venueId,start:r.startTime,end:timeEnd(r),type:'v72Use',title:r.kind==='internal'?types[r.activity]:blocks[r.blockReason],code:r.code,status:r.status});}return result.sort((a,b)=>String(a.start).localeCompare(String(b.start)));};
  const originalEventItem=eventItem;
- eventItem=function(x){if(x.type==='v72Use'){const r=get(list(),x.id);if(!r)return '';return '<button type="button" class="v72-internal-card '+(r.kind==='block'?'block':'')+'" data-action="v72Detail" data-id="'+esc(r.id)+'"><span class="v72-line"></span><span style="font-size:12px;font-weight:850;white-space:nowrap">'+esc(x.start)+'</span><span style="flex:1;min-width:0"><strong>'+esc(x.title)+'</strong><small>'+esc(x.code)+' · '+esc(x.end)+' · '+esc(r.resourceIds.map(id=>resource(id)?.name||'Cancha').join(' + '))+'</small></span><span class="badge">'+(r.kind==='block'?'Bloqueo':'Interno')+'</span></button>';}
-  return originalEventItem(x);};
+ eventItem=function(x){if(x.type==='v72Use'){const r=get(list(),x.id);return r?v95InternalCard(r):'';}return originalEventItem(x);};
  const oldBody=reservationBody;
  reservationBody=function(){let base=oldBody();if(w.resView==='list'){
    const filter=String(w.search||'').toLocaleLowerCase('es-PE');const rows=list().filter(r=>allowed(current(),r.venueId)&&[r.code,r.responsible,r.kind,r.activity,r.blockReason,site(r.venueId)?.name].join(' ').toLocaleLowerCase('es-PE').includes(filter));
@@ -19236,6 +19253,7 @@ const V89_WORKER_CSS=`
 .v89-turn-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:12px 0 16px}
 .v89-turn-data div{min-width:0;padding:11px 12px;border-radius:11px;background:#f0f5f2}
 .v89-turn-data small{display:block;font-size:10px;color:#668079;margin-bottom:5px}.v89-turn-data strong{display:block;font-size:13px;color:#12232d;overflow-wrap:anywhere}
+.v89-turn-data .v93-cash-collected{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px}.v89-turn-data .v93-cash-collected small{margin:0}.v89-turn-data .v93-cash-collected strong{white-space:nowrap}
 .v89-turn-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .v89-turn-note{font-size:11px;color:#6f858a;line-height:1.5;margin-top:12px}
 .v89-close-message{padding:11px 12px;background:#edf6f0;border-radius:10px;font-size:11px;line-height:1.5;color:#38684f;margin:10px 0}
@@ -19279,7 +19297,7 @@ closeCash=function(args){const s=session();const gap=s&&rnd(Number(args.counted)
 // Arqueo ciego: el encargado consigna lo contado sin conocer la cifra teorica.
 const v89OldCashCloseModal=cashCloseModal;
 cashCloseModal=function(){if(!v89Desk())return v89OldCashCloseModal();const s=session();if(!s)return modalShell('CAJA','Sin turno abierto','No hay una caja abierta.');const r=v56CloseReport(s);
- const body='<div class="v89-turn-note">'+esc(r.serial)+' · '+esc(r.venue)+' · '+esc(r.cashbox)+'</div>'+
+ const body='<div class="v89-turn-note">'+esc(r.venue)+' · '+esc(r.cashbox)+'</div>'+
  '<div class="v89-turn-card"><h3>Resumen de cobros</h3>'+v57MethodsRows(r)+'</div>'+
  '<div class="v89-turn-card"><h3>Arqueo de efectivo</h3><div class="field"><label>Efectivo contado físicamente (S/) *</label><input type="number" id="w-count" min="0" step="0.01" inputmode="decimal" placeholder="Importe contado"></div><div class="field" style="margin-top:12px"><label>Observaciones (opcional)</label><textarea id="w-note" rows="2" placeholder="Incidencias del turno"></textarea></div><label class="v57-check" style="margin-top:12px"><input type="checkbox" id="v56-physical-confirm"> Confirmo que he contado físicamente el dinero.</label></div>'+
  '<div class="v89-close-message">Después de confirmar, el supervisor revisará el cierre y podrás consultar esta constancia únicamente ahora. Tus operaciones quedarán cerradas.</div>';
@@ -19294,7 +19312,7 @@ v57RefreshCount=function(){if(!v89Desk())return v89OldRefreshCount();
 // El encargado ve su turno actual, sin panel de cierres anteriores ni efectivo teorico.
 const v89PriorCashView=cashView;
 cashView=function(){if(!v89Desk())return v89PriorCashView();const s=session();if(!s)return '';const report=v56CloseReport(s),p=v57PaymentParts(report);
- return header('Caja','Operaciones de tu turno actual.')+'<section class="v89-turn-card"><h3>Turno abierto</h3><div class="v89-turn-data"><div><small>Caja</small><strong>'+esc(report.cashbox)+'</strong></div><div><small>Apertura</small><strong>'+esc(v89When(s.openedAt))+'</strong></div><div><small>Turno</small><strong>'+esc(s.number)+'</strong></div><div><small>Cobros registrados</small><strong>'+fmt(p.total)+'</strong></div></div><div class="v89-turn-actions">'+actionButton('Registrar gasto','expense','outline')+actionButton('Entregar efectivo','withdraw','outline')+actionButton('Cerrar turno','closeCash','green')+'</div><p class="v89-turn-note">El conteo y las diferencias se consolidan al cerrar. El supervisor dispone del historial completo.</p></section>'+
+ return header('Caja','Operaciones de tu turno actual.')+'<section class="v89-turn-card"><h3>Turno abierto</h3><div class="v89-turn-data"><div><small>Caja</small><strong>'+esc(report.cashbox)+'</strong></div><div><small>Apertura</small><strong>'+esc(v89When(s.openedAt))+'</strong></div><div class="v93-cash-collected"><small>Cobros registrados</small><strong>'+fmt(p.total)+'</strong></div></div><div class="v89-turn-actions">'+actionButton('Registrar gasto','expense','outline')+actionButton('Entregar efectivo','withdraw','outline')+actionButton('Cerrar turno','closeCash','green')+'</div></section>'+
  '<section class="v89-turn-card"><h3>Cobros por medio de pago</h3>'+v57MethodsRows(report)+'</section>'+v57DetailExpandable(report);};
 // Quita los botones de historial del perfil presencial, sin afectar a Administracion.
 const v89PriorMoreView=moreView;
@@ -19444,6 +19462,11 @@ function v90Style(){if(!shadow||shadow.getElementById('eleva-nav-estable'))retur
 }
 function v90Viewport(){const host=shadow?.host;if(!host)return;
  const vv=window.visualViewport;
+ // Pinching reduces visualViewport.height in *CSS pixels*. Do not resize the whole
+ // application to that scaled height: it would pull the bottom navigation upward.
+ // Keep the last unzoomed layout until the user returns to normal scale.
+ if(vv&&Number.isFinite(vv.scale)&&vv.scale>1.015){host.dataset.v95PinchZoom='yes';return;}
+ delete host.dataset.v95PinchZoom;
  const height=vv?.height&&Number.isFinite(vv.height)?vv.height:window.innerHeight;
  if(height>200)host.style.setProperty('--v90-visual-height',Math.round(height)+'px');
 }
@@ -19722,6 +19745,239 @@ v84StartRefund=function(rec){
 };
 
 
+/* ELEVA SPORT | Agenda compacta: filtros contextuales, Hoy + calendario,
+   encabezado mensual unico y fechas horizontales sin repetir el mes.
+   Cambio de presentacion; no altera reservas, tarifas ni movimientos. */
+const V91_AGENDA_CSS=`
+.v91-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.v91-head-actions .v87-today{height:45px;min-width:54px;padding:0 13px;border-radius:13px;font-size:13px}
+.v91-head-actions .v87-open-calendar{height:45px;width:45px}
+.v91-search-row{display:grid;grid-template-columns:minmax(0,1fr) 45px;align-items:center;gap:9px;margin:0 0 15px}
+.v91-search-row .field-search{min-width:0;width:100%;height:45px;margin:0}
+.v91-search-row .field-search input{min-width:0;width:100%;max-width:100%}
+.v91-filter-trigger{position:relative;display:flex;align-items:center;justify-content:center;width:45px;height:45px;border:1px solid #dbe4e1;border-radius:13px;background:white;color:#12232d;cursor:pointer;flex:0 0 45px}
+.v91-filter-trigger .i{width:21px;height:21px}
+.v91-filter-dot{position:absolute;right:6px;top:5px;width:7px;height:7px;background:#1fb85e;border-radius:50%;border:1px solid white}
+.v91-month-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;min-width:0}
+.v91-month-line strong{font-size:17px;letter-spacing:-.025em;color:#12232d;line-height:1.2;font-weight:800}
+.v91-month-line span{font-size:11px;color:#728790;white-space:nowrap}
+.v87-day-chip.v91-day-chip{min-height:63px;padding:9px 2px;gap:7px}
+.v87-day-chip.v91-day-chip .v87-day-word{font-size:11px;line-height:1}
+.v87-day-chip.v91-day-chip strong{font-size:19px;line-height:1}
+.v91-filter-backdrop{position:absolute;inset:0;z-index:96;background:rgba(13,30,38,.42);display:flex;align-items:center;justify-content:center;padding:16px;overscroll-behavior:contain}
+.v91-filter-dialog{display:flex;flex-direction:column;min-height:0;max-height:min(82dvh,660px);width:min(100%,430px);overflow:hidden;background:#fff;border-radius:20px;box-shadow:0 18px 60px rgba(0,0,0,.17);color:#12232d}
+.v91-filter-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 19px;border-bottom:1px solid #e9efed}
+.v91-filter-top span{font-size:11px;color:#47bb68;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.v91-filter-top h2{margin:4px 0 0;font-size:21px;letter-spacing:-.025em}
+.v91-filter-close{display:grid;place-items:center;flex:0 0 35px;width:35px;height:35px;background:white;border:1px solid #dfe8e4;border-radius:10px;color:#12232d;cursor:pointer}
+.v91-filter-body{overflow-y:auto;overscroll-behavior:contain;padding:17px 19px;min-height:0}
+.v91-filter-group+.v91-filter-group{margin-top:19px}
+.v91-filter-group-title{font-weight:780;font-size:13px;margin:0 0 10px;color:#1b313a}
+.v91-filter-choices{display:flex;flex-direction:column;gap:7px}
+.v91-filter-choice{display:flex;align-items:center;justify-content:space-between;text-align:left;gap:12px;width:100%;border:1px solid #e0e8e5;border-radius:11px;background:#fff;min-height:43px;padding:10px 12px;font:inherit;font-size:13px;font-weight:650;color:#263c43;cursor:pointer}
+.v91-filter-choice.chosen{background:#edf9f0;border-color:#8edbaa;color:#176a38}
+.v91-filter-choice .i{width:17px;height:17px}
+.v91-filter-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:13px 18px max(13px,env(safe-area-inset-bottom,0px));border-top:1px solid #e6efea;background:#fff}
+.v91-filter-actions button{border:1px solid #dfe7e4;border-radius:11px;min-height:45px;background:#f2f5f4;color:#18313b;font-size:13px;font-weight:780;cursor:pointer}
+.v91-filter-actions button.primary{background:#00e64d;border-color:#00e64d;color:#102830}
+#v51-worker-app:has(.v91-filter-backdrop) .bottom-nav{visibility:hidden!important}
+@media(max-width:650px){
+ .v87-head{margin-bottom:14px}.v87-tabs{margin-bottom:15px!important}
+ .v91-month-line strong{font-size:16px}.v91-month-line span{font-size:11px}
+ .v87-day-chip.v91-day-chip{min-height:62px}
+ .v91-filter-backdrop{align-items:flex-end;padding:0}
+ .v91-filter-dialog{border-radius:20px 20px 0 0;width:100%;max-height:calc(100% - 25px)}
+}
+@media(max-width:365px){.v91-head-actions{gap:5px}.v91-head-actions .v87-today{min-width:48px;padding:0 9px}.v91-search-row{gap:7px}}
+`;
+function v91FilterSvg(){return '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="white"/><circle cx="16" cy="17" r="2" fill="white"/></svg>';}
+function v91SiteCourtOptions(siteId){
+ return (data.resources||[]).filter(x=>Number(x.venueId)===Number(siteId)&&valid(x)&&!/combinaci|completa/i.test(String(x.type||''))&&!/(?:cancha|sede)\s+completa|combinaci[oó]n/i.test(String(x.name||''))).sort((a,b)=>String(a.name).localeCompare(String(b.name),'es'));
+}
+function v91CanFilter(){return sites().length>1||v91SiteCourtOptions(w.siteId).length>1;}
+function v91FilterActive(){return !!w.v87CourtId||(sites().length>1&&Number(w.siteId)!==Number(current().primaryVenueId));}
+function v91FilterHTML(){
+ const allowedSites=sites(),siteId=Number(w.v91DraftSite||w.siteId),courtId=String(w.v91DraftCourt||''),courts=v91SiteCourtOptions(siteId);
+ const choice=(value,label,selected,action)=>'<button type="button" class="v91-filter-choice '+(selected?'chosen':'')+'" data-v91="'+action+'" data-value="'+esc(value)+'" aria-pressed="'+(selected?'true':'false')+'"><span>'+esc(label)+'</span>'+(selected?ico('check'):'')+'</button>';
+ const siteBlock=allowedSites.length>1?'<section class="v91-filter-group"><h3 class="v91-filter-group-title">Sede</h3><div class="v91-filter-choices">'+allowedSites.map(s=>choice(s.id,s.name,Number(s.id)===siteId,'chooseSite')).join('')+'</div></section>':'';
+ const courtsBlock='<section class="v91-filter-group"><h3 class="v91-filter-group-title">Cancha física</h3><div class="v91-filter-choices">'+choice('','Todas las canchas',!courtId,'chooseCourt')+courts.map(c=>choice(c.id,c.name,String(c.id)===courtId,'chooseCourt')).join('')+'</div></section>';
+ return '<div class="v91-filter-backdrop" data-v91="backdrop"><section class="v91-filter-dialog" role="dialog" aria-modal="true" aria-label="Filtros de reservas"><div class="v91-filter-top"><div><span>RESERVAS</span><h2>Filtros</h2></div><button type="button" class="v91-filter-close" data-v91="closeFilter" aria-label="Cerrar filtros">'+ico('close')+'</button></div><div class="v91-filter-body">'+siteBlock+courtsBlock+'</div><div class="v91-filter-actions"><button type="button" data-v91="clearFilter">Limpiar</button><button type="button" class="primary" data-v91="applyFilter">Aplicar filtros</button></div></section></div>';
+}
+// Only the day and weekday are displayed in each chip. The heading owns month/year.
+dateSelector=function(){
+ const selected=v87ActiveDay();
+ const month=v87Month(selected,false),title=month.slice(0,1).toUpperCase()+month.slice(1)+' '+selected.slice(0,4);
+ const strip=Array.from({length:15},(_,i)=>dayPlus(selected,i-7)).map(d=>{
+  const obj=new Date(d+'T12:00:00');const wd=new Intl.DateTimeFormat('es-PE',{weekday:'short'}).format(obj).replace('.','');
+  return '<button type="button" class="v87-day-chip v91-day-chip '+(d===selected?'active ':'')+(d===day()?'today':'')+'" data-action="day" data-date="'+d+'" aria-label="'+esc(asDate(d))+'" aria-pressed="'+(d===selected?'true':'false')+'"><span class="v87-day-word">'+esc(wd)+'</span><strong>'+Number(d.slice(-2))+'</strong></button>';
+ }).join('');
+ return '<div class="v91-month-line"><strong>'+esc(title)+'</strong><span>'+esc(v87DayInfo())+'</span></div><div class="v87-day-scroll v91-day-strip" aria-label="Elegir día">'+strip+'</div>';
+};
+// Keep the same Agenda/Canchas/Lista actions, booking cards and existing date filter.
+reservations=function(){
+ const types=[['agenda','Agenda'],['courts','Canchas'],['list','Lista']];
+ const tools='<div class="v91-head-actions"><button type="button" data-v87="today" class="v87-today" aria-label="Volver al día de hoy">Hoy</button><button type="button" class="v87-open-calendar" data-v87="openCalendar" title="Abrir calendario mensual" aria-label="Abrir calendario mensual">'+ico('calendar')+'</button></div>';
+ const search='<div class="v91-search-row"><div class="field-search">'+ico('search','sm')+'<input id="v51-search" type="search" placeholder="Cliente, código o cancha" value="'+esc(w.search)+'" aria-label="Buscar reservas" autocomplete="off"></div>'+(v91CanFilter()?'<button type="button" class="v91-filter-trigger" data-v91="openFilter" title="Filtrar reservas" aria-label="Filtrar reservas" aria-haspopup="dialog">'+v91FilterSvg()+(v91FilterActive()?'<span class="v91-filter-dot" aria-label="Filtros activos"></span>':'')+'</button>':'')+'</div>';
+ const views='<div class="segmented v87-tabs" style="--n:3" role="group" aria-label="Vista de reservas">'+types.map(([k,n])=>'<button type="button" class="'+(w.resView===k?'active':'')+'" data-action="resView" data-view="'+k+'" aria-pressed="'+(w.resView===k)+'">'+n+'</button>').join('')+'</div>';
+ return '<section class="v87-reservations v91-reservations"><div class="v87-head"><div><div class="v87-eyebrow">'+esc(shortSite())+'</div><h1>Reservas</h1></div>'+tools+'</div>'+search+views+(w.resView!=='list'?dateSelector():'')+'<div id="v51-results">'+reservationBody()+'</div></section>';
+};
+const v91PreviousWorkerRender=workerRender;
+workerRender=function(...args){
+ v91PreviousWorkerRender(...args);
+ if(!shadow)return;
+ if(!shadow.getElementById('eleva-compact-agenda')){const style=document.createElement('style');style.id='eleva-compact-agenda';style.textContent=V91_AGENDA_CSS;shadow.appendChild(style);}
+ const root=shadow.getElementById('v51-worker-app');if(!root)return;
+ root.querySelector('.v91-filter-backdrop')?.remove();
+ if(w.v91FilterOpen&&w.page==='reservations'&&!w.modal)root.insertAdjacentHTML('beforeend',v91FilterHTML());
+};
+const v91PreviousClick=onWorkClick;
+onWorkClick=function(e){
+ const t=e.target.closest?.('[data-v91]');
+ if(t){const a=t.dataset.v91;e.preventDefault();e.stopPropagation();
+  if(a==='openFilter'){
+   w.v87CalendarOpen=false;w.v91DraftSite=w.siteId;w.v91DraftCourt=w.v87CourtId||'';w.v91FilterOpen=true;workerRender();return;
+  }
+  if(a==='backdrop'){if(e.target!==t)return;w.v91FilterOpen=false;workerRender();return;}
+  if(a==='closeFilter'){w.v91FilterOpen=false;workerRender();return;}
+  if(a==='chooseSite'){
+   const siteId=Number(t.dataset.value);
+   if(!sites().some(s=>Number(s.id)===siteId))return;
+   w.v91DraftSite=siteId;w.v91DraftCourt='';workerRender();return;
+  }
+  if(a==='chooseCourt'){
+   const court=t.dataset.value||'',cs=v91SiteCourtOptions(w.v91DraftSite||w.siteId);
+   if(court&&!cs.some(c=>String(c.id)===court))return;
+   w.v91DraftCourt=court;
+   const dialog=shadow.querySelector('.v91-filter-dialog');
+   dialog?.querySelectorAll('[data-v91="chooseCourt"]').forEach(button=>{
+    const chosen=String(button.dataset.value||'')===court;
+    button.classList.toggle('chosen',chosen);button.setAttribute('aria-pressed',String(chosen));
+    button.querySelector('svg')?.remove();if(chosen)button.insertAdjacentHTML('beforeend',ico('check'));
+   });
+   return;
+  }
+  if(a==='clearFilter'){w.v91DraftCourt='';const primary=Number(current().primaryVenueId);w.v91DraftSite=sites().some(s=>Number(s.id)===primary)?primary:w.siteId;workerRender();return;}
+  if(a==='applyFilter'){
+   const siteId=Number(w.v91DraftSite||w.siteId),court=String(w.v91DraftCourt||'');
+   if(!sites().some(s=>Number(s.id)===siteId))return;
+   if(court&&!v91SiteCourtOptions(siteId).some(c=>String(c.id)===court))return;
+   if(Number(w.siteId)!==siteId){w.siteId=siteId;w.draft=null;}
+   w.v87CourtId=court;w.v91FilterOpen=false;workerRender();return;
+  }
+  return;
+ }
+ if(e.target.closest?.('[data-v87="openCalendar"]'))w.v91FilterOpen=false;
+ if(e.target.closest?.('[data-action="page"],[data-action="goRes"]'))w.v91FilterOpen=false;
+ return v91PreviousClick(e);
+};
+const v91PriorMount=mount;
+mount=function(...args){
+ const result=v91PriorMount(...args);
+ if(shadow&&!shadow.__v91FilterEscape){shadow.__v91FilterEscape=true;
+  shadow.addEventListener('keydown',e=>{if(e.key==='Escape'&&w.v91FilterOpen){e.stopPropagation();w.v91FilterOpen=false;workerRender();}});
+ }
+ return result;
+};
+window.ElevaAgendaCompacta={selectedDate:()=>v87ActiveDay(),courtFilter:()=>w.v87CourtId||'',openFilters:()=>{w.v91DraftSite=w.siteId;w.v91DraftCourt=w.v87CourtId||'';w.v91FilterOpen=true;workerRender();}};
+
+
+
+/* ELEVA | Consistent date/time controls across mobile forms.
+   Native iOS date/time widgets need more room than two narrow columns provide. */
+const V92_WORKER_DATE_CSS = `
+#v51-worker-app :is(.field,.v54-field,.form-section,.sheet-body,.v59-grid,.v60-edit-grid,.v54-rowgrid,.fields,.v76-band-row){min-width:0;max-width:100%;box-sizing:border-box}
+#v51-worker-app :is(.field,.v54-field) > :is(input,select,textarea){min-width:0;max-width:100%;box-sizing:border-box}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="week"],[type="datetime-local"]){
+ display:block!important;inline-size:100%!important;width:100%!important;max-inline-size:100%!important;max-width:100%!important;
+ min-inline-size:0!important;min-width:0!important;box-sizing:border-box!important;
+ height:48px!important;min-height:48px!important;margin:0!important;
+ padding:10px 12px!important;font-size:16px!important;line-height:normal!important;
+ text-align:left!important;appearance:auto;-webkit-appearance:auto;
+}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="week"],[type="datetime-local"])::-webkit-date-and-time-value{text-align:left!important;min-width:0!important;max-width:100%!important}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="week"],[type="datetime-local"])::-webkit-datetime-edit{min-width:0!important;padding:0!important;white-space:nowrap}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="week"],[type="datetime-local"])::-webkit-calendar-picker-indicator{margin-inline-start:auto;flex-shrink:0}
+@media(max-width:640px){
+ /* Booking and rebooking: each native picker gets the full available width. */
+ #v51-worker-app .fields .two:has(input:is([type="date"],[type="time"],[type="datetime-local"],[type="month"])),
+ #v51-worker-app .fields.two:has(input:is([type="date"],[type="time"],[type="datetime-local"],[type="month"])),
+ #v51-worker-app .formgrid:has(input:is([type="date"],[type="time"])),
+ #v51-worker-app .v59-grid:has(input:is([type="date"],[type="time"])),
+ #v51-worker-app .v60-edit-grid:has(input:is([type="date"],[type="time"])),
+ #v51-worker-app .v54-rowgrid:has(input:is([type="date"],[type="time"])),
+ #v51-worker-app .v54-formgrid:has(input:is([type="date"],[type="time"])){
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:11px!important;max-width:100%!important;
+ }
+ #v51-worker-app :is(.fields .two,.v59-grid,.v60-edit-grid,.v54-rowgrid,.v54-formgrid):has(input:is([type="date"],[type="time"])) > *{
+  min-width:0!important;max-width:100%!important;
+ }
+ #v51-worker-app .v76-band-row:has(input[type="time"]){grid-template-columns:minmax(0,1fr)!important}
+ #v51-worker-app .v76-band-row:has(input[type="time"]) > *{grid-column:1/-1!important;min-width:0!important;max-width:100%!important}
+ #v51-worker-app .v76-band-remove{justify-self:end}
+}
+`;
+const V92_ADMIN_DATE_CSS = `
+#overlay :is(.formgrid,.field,.v54-field,.v54-rowgrid,.v59-grid,.v60-edit-grid,.v76-band-row),
+#content :is(.formgrid,.field,.v54-field,.v54-rowgrid,.v59-grid,.v60-edit-grid,.v76-band-row){min-width:0;max-width:100%;box-sizing:border-box}
+#overlay input:is([type="date"],[type="time"],[type="month"],[type="week"],[type="datetime-local"]),
+#content input:is([type="date"],[type="time"],[type="month"],[type="week"],[type="datetime-local"]){
+ display:block!important;width:100%!important;inline-size:100%!important;max-width:100%!important;
+ min-width:0!important;box-sizing:border-box!important;height:48px!important;min-height:48px!important;
+ margin:0!important;padding:10px 12px!important;font-size:16px!important;line-height:normal!important;
+ text-align:left!important;appearance:auto;-webkit-appearance:auto;
+}
+#overlay input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"])::-webkit-date-and-time-value,
+#content input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"])::-webkit-date-and-time-value{text-align:left!important;min-width:0!important}
+@media(max-width:640px){
+ #overlay .formgrid:has(input:is([type="date"],[type="time"],[type="month"])),
+ #overlay .v59-grid:has(input:is([type="date"],[type="time"])),
+ #overlay .v60-edit-grid:has(input:is([type="date"],[type="time"])),
+ #overlay .v54-rowgrid:has(input:is([type="date"],[type="time"])),
+ #overlay .v54-formgrid:has(input:is([type="date"],[type="time"])),
+ #content .v59-grid:has(input:is([type="date"],[type="time"])),
+ #content .v60-edit-grid:has(input:is([type="date"],[type="time"])),
+ #content .v54-rowgrid:has(input:is([type="date"],[type="time"])),
+ #content .v54-formgrid:has(input:is([type="date"],[type="time"])){
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:11px!important;
+ }
+ #overlay .v76-band-row:has(input[type="time"]),
+ #content .v76-band-row:has(input[type="time"]){grid-template-columns:minmax(0,1fr)!important}
+ #overlay .v76-band-row:has(input[type="time"]) > *,
+ #content .v76-band-row:has(input[type="time"]) > *{grid-column:1/-1!important;min-width:0!important;max-width:100%!important}
+ #overlay .v76-band-remove,#content .v76-band-remove{justify-self:end}
+ #content .v89-admin-controls label:has(input[type="time"]){flex:1 1 100%!important;min-width:0!important}
+ #content .v66-filtergrid:has(input[type="date"]){grid-template-columns:minmax(0,1fr)!important}
+}
+`;
+const v92AdminStyle=document.createElement('style');
+v92AdminStyle.id='eleva-fecha-hora-unificada';
+v92AdminStyle.textContent=V92_ADMIN_DATE_CSS;
+document.head.appendChild(v92AdminStyle);
+const v92EarlierWorkerRender=workerRender;
+workerRender=function(...args){
+ const result=v92EarlierWorkerRender(...args);
+ if(shadow&&!shadow.getElementById('eleva-fecha-hora-unificada')){
+  const style=document.createElement('style');
+  style.id='eleva-fecha-hora-unificada';style.textContent=V92_WORKER_DATE_CSS;
+  shadow.appendChild(style);
+ }
+ return result;
+};
+
+/* "Lista" must also render internal occupation cards after its later override. */
+const v95PreviousReservationBody=reservationBody;
+reservationBody=function(){
+ let result=v95PreviousReservationBody();
+ if(w.resView!=='list'||w.filter!=='all'||typeof window.__elevaInternalUnifiedCard!=='function')return result;
+ const search=String(w.search||'').toLocaleLowerCase('es-PE');
+ const uses=(data.v72InternalUses||[]).filter(r=>
+  Number(r.venueId)===Number(w.siteId)&&allowed(current(),r.venueId)&&v87CourtMatch(r)&&
+  [r.code,r.responsible,r.activity,r.blockReason,r.kind,r.date,...(r.resourceIds||[]).map(id=>resource(id)?.name||'')].join(' ').toLocaleLowerCase('es-PE').includes(search)
+ ).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,60);
+ if(!uses.length)return result;
+ result=result.replace('<div class="v87-results-empty">No hay reservas con estos filtros.</div>','');
+ return result+'<div class="v95-internal-list" style="margin-top:19px"><div class="section-title"><h2>Usos internos y bloqueos</h2></div><div class="stack">'+uses.map(window.__elevaInternalUnifiedCard).join('')+'</div></div>';
+};
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
 })();
