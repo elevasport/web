@@ -19211,6 +19211,207 @@ window.ElevaUXStability={activeModal:()=>w.modal||null,activePage:()=>w.page||nu
  receiptDocument:(id)=>{const r=v84FindReceipt(id);return r?v84Document(r):null},
  scroll:()=>({page:shadow?.host?.scrollTop||0,modal:shadow?.querySelector('#v51-overlay .sheet-body')?.scrollTop||0})};
 
+/* ELEVA SPORT | Jornada presencial: una apertura = ingreso; cierre = salida y arqueo.
+   Control de acceso de la interfaz. La autorizacion real debe validarse en servidor. */
+const V89_WORKER_CSS=`
+.v89-gate-app{min-height:100dvh;background:#f7f8f6;color:#12232d;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.v89-gate-top{height:70px;background:#12232d;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 clamp(16px,4vw,28px)}
+.v89-gate-brand{font-size:22px;letter-spacing:-1.2px;font-weight:800}.v89-gate-brand span{font-size:12px;color:#00e64d;margin-left:3px;letter-spacing:-.3px}
+.v89-gate-account{border:1px solid #577079;background:#203842;color:white;border-radius:11px;padding:9px 12px;font:inherit;font-size:12px;cursor:pointer}
+.v89-gate-wrap{min-height:calc(100dvh - 70px);display:grid;place-items:center;padding:30px 16px 42px}
+.v89-gate-card{width:min(100%,430px);border:1px solid #e0e9e4;border-radius:20px;padding:clamp(20px,5vw,30px);background:#fff;box-shadow:0 12px 32px #091f2010}
+.v89-gate-kicker{color:#23b95f;font-size:11px;letter-spacing:.11em;font-weight:800;text-transform:uppercase}
+.v89-gate-card h1{font-weight:800;font-size:26px;letter-spacing:-.045em;margin:10px 0 7px;line-height:1.16}
+.v89-gate-desc{font-size:13px;color:#6d8186;line-height:1.6;margin:0 0 20px}
+.v89-gate-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #e8efec;font-size:13px}
+.v89-gate-row span{color:#60757c}.v89-gate-row b{text-align:right;overflow-wrap:anywhere}
+.v89-open-label{display:block;font-size:12px;font-weight:750;color:#506971;margin:20px 0 6px}
+.v89-open-input{box-sizing:border-box;width:100%;min-height:47px;padding:10px 13px;border:1px solid #d5e0db;border-radius:12px;font:inherit;font-size:16px;color:#12232d;background:#fff}
+.v89-gate-help{font-size:11px;color:#71878a;line-height:1.6;margin:8px 0 15px}
+.v89-open-btn{width:100%;border:0;border-radius:12px;background:#00e64d;color:#0f2530;min-height:49px;font-weight:800;font-size:14px;cursor:pointer}
+.v89-gate-locked{background:#f1f5f3;border-radius:12px;padding:13px;color:#627781;line-height:1.5;font-size:12px;margin-top:14px}
+.v89-turn-card{background:#fff;border:1px solid #e0e9e5;border-radius:16px;padding:16px;margin:12px 0;}
+.v89-turn-card h3{font-size:14px;margin:0 0 11px;font-weight:800}
+.v89-turn-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:12px 0 16px}
+.v89-turn-data div{min-width:0;padding:11px 12px;border-radius:11px;background:#f0f5f2}
+.v89-turn-data small{display:block;font-size:10px;color:#668079;margin-bottom:5px}.v89-turn-data strong{display:block;font-size:13px;color:#12232d;overflow-wrap:anywhere}
+.v89-turn-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.v89-turn-note{font-size:11px;color:#6f858a;line-height:1.5;margin-top:12px}
+.v89-close-message{padding:11px 12px;background:#edf6f0;border-radius:10px;font-size:11px;line-height:1.5;color:#38684f;margin:10px 0}
+@media(max-width:420px){.v89-gate-top{height:65px}.v89-gate-wrap{min-height:calc(100dvh - 65px);align-items:start;padding-top:25px}.v89-turn-data{gap:7px}}
+`;
+const v89AdminCss=document.createElement('style');v89AdminCss.id='eleva-control-turnos';v89AdminCss.textContent=`
+.v89-admin{max-width:1180px;margin:auto;padding:24px 20px 45px;color:#12232d}.v89-admin h1{font-size:27px;letter-spacing:-.045em;margin:4px 0 7px}.v89-admin p{font-size:12px;color:#667d84;line-height:1.55;margin:0 0 16px}
+.v89-admin-header{display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:17px}
+.v89-admin-kicker{color:#24864d;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+.v89-admin-box{background:#fff;border:1px solid #dfe8e4;border-radius:16px;padding:16px;margin:13px 0}
+.v89-admin-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.v89-admin-stat{background:#f1f6f2;border-radius:12px;padding:14px;min-width:0}.v89-admin-stat small{display:block;font-size:11px;color:#58766f;margin-bottom:8px}.v89-admin-stat b{font-size:20px;letter-spacing:-.04em}
+.v89-admin-controls{display:flex;align-items:end;flex-wrap:wrap;gap:9px}.v89-admin-controls label{display:grid;gap:6px;font-size:11px;color:#62777b;font-weight:700;min-width:145px;flex:1}.v89-admin select,.v89-admin input{font:inherit;color:#12232d;border:1px solid #d7e2dd;border-radius:10px;background:#fff;padding:10px;min-height:41px;min-width:0;max-width:100%}
+.v89-admin-table{width:100%;border-collapse:collapse;font-size:12px}.v89-admin-table th{text-align:left;font-size:11px;color:#60757b;font-weight:750;background:#f4f7f5}.v89-admin-table th,.v89-admin-table td{padding:11px 8px;border-bottom:1px solid #e9eeeb;vertical-align:middle}.v89-admin-table td small{display:block;color:#74888c;font-size:10px;margin-top:3px}.v89-admin-table-wrap{overflow-x:auto}.v89-admin-state{display:inline-block;border-radius:99px;background:#eaf5ed;color:#228450;padding:5px 8px;font-size:10px;font-weight:750;white-space:nowrap}.v89-admin-state.warn{background:#fff2df;color:#98600a}.v89-admin-state.muted{background:#eff2f1;color:#738287}
+.v89-admin-days{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}.v89-admin-days label{display:flex;align-items:center;gap:5px;padding:8px 10px;background:#f5f7f6;border-radius:9px;font-size:11px;cursor:pointer}.v89-admin-days input{min-height:auto;accent-color:#00ab44}
+.v89-admin-btn{background:#12232d;color:#fff;border:0;border-radius:11px;padding:11px 18px;font-size:12px;font-weight:750;cursor:pointer}
+@media(max-width:750px){.v89-admin{padding:16px 12px}.v89-admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v89-admin-table{min-width:730px}.v89-admin-controls label:has(#v89-month){flex:1 1 100%}.v89-admin-controls input,.v89-admin-controls select{font-size:16px}}
+`;document.head.appendChild(v89AdminCss);
+const v89Desk=()=>role()==='desk';
+const v89Shift=()=>{const byUser=(data.v89ShiftSchedules||{})[String(current().id)];return byUser&&Array.isArray(byUser.days)?byUser:null};
+function v89When(iso){return v56ISODateTime(iso)}
+function v89WorkerStyle(){if(!shadow)return;if(!shadow.getElementById('eleva-jornada-presencial')){const s=document.createElement('style');s.id='eleva-jornada-presencial';s.textContent=V89_WORKER_CSS;shadow.appendChild(s);}}
+function v89RecentReceiptAllowed(){if(!v89Desk()||session()||!w.v89ClosingReceiptId||w.modal!=='v56Session')return false;const close=(data.cashSessions||[]).find(x=>String(x.id)===String(w.v89ClosingReceiptId));return !!(close?.closedAt&&String(close.userId)===String(current().id)&&String(w.modalId)===String(close.id));}
+function v89ClosedGate(){const user=current(),box=cashboxFor(),sched=v89Shift(),receipt=v89RecentReceiptAllowed(),siteName=box?site(box.venueId)?.name||'Sede asignada':site(user.primaryVenueId)?.name||'Sede asignada';
+ const range=sched?(sched.start+' – '+sched.end):'Según asignación';
+ return '<div class="v89-gate-app"><div class="v89-gate-top"><div class="v89-gate-brand">eleva<span>SPORT</span></div><button type="button" data-action="profiles" class="v89-gate-account">Cambiar perfil</button></div><main class="v89-gate-wrap"><section class="v89-gate-card"><span class="v89-gate-kicker">ENCARGADO · '+esc(siteName)+'</span><h1>Turno cerrado</h1><p class="v89-gate-desc">Abre tu turno para atender reservas, registrar cobros y acceder a los recibos de tu sede.</p><div class="v89-gate-row"><span>Responsable</span><b>'+esc(user.name)+'</b></div><div class="v89-gate-row"><span>Horario asignado</span><b>'+esc(range)+'</b></div><div class="v89-gate-row"><span>Caja</span><b>'+esc(box?.name||'Sin caja asignada')+'</b></div>'+
+ (box?'<label for="v89-opening" class="v89-open-label">Fondo inicial (S/)</label><input id="v89-opening" class="v89-open-input" type="number" inputmode="decimal" min="0" step="0.01" value="0"><p class="v89-gate-help">La apertura registra automáticamente tu hora real de ingreso.</p><button type="button" class="v89-open-btn" data-action="v89OpenTurn">Abrir turno</button>':'<div class="v89-gate-locked">No tienes una caja asignada. Solicita la asignación a Administración.</div>')+'</section></main></div>'+
+ (receipt?modalView():'');}
+const v89BeforeOpenCash=openCash;
+openCash=function(args){const s=v89BeforeOpenCash(args);if(v89Desk()){
+  const sch=v89Shift();s.v89AttendanceIn=s.openedAt;s.v89AttendanceSource='Apertura de turno';s.v89ScheduledStart=sch?.start||'';s.v89ScheduledEnd=sch?.end||'';
+  s.v89NoAutomaticOvertime=true;audit('Ingreso presencial por apertura de turno',{cashSessionId:s.id,at:s.openedAt,userId:s.userId});persistAll();
+ }return s;};
+const v89BeforeCloseCash=closeCash;
+closeCash=function(args){const s=session();const gap=s&&rnd(Number(args.counted)-cashSummary(s).expected),notes=String(args.note||'').trim();
+ const closed=v89BeforeCloseCash({...args,note:Math.abs(gap||0)>=.005&&notes.length<8?'Diferencia de arqueo pendiente de revisión del supervisor.':notes});
+ if(v89Desk()){
+  closed.v89AttendanceIn=closed.v89AttendanceIn||closed.openedAt;
+  closed.v89AttendanceOut=closed.closedAt;closed.v89AttendanceOutSource='Cierre de turno';
+  audit('Salida presencial por cierre de turno',{cashSessionId:closed.id,at:closed.closedAt,userId:closed.userId});persistAll();
+ }return closed;};
+// Arqueo ciego: el encargado consigna lo contado sin conocer la cifra teorica.
+const v89OldCashCloseModal=cashCloseModal;
+cashCloseModal=function(){if(!v89Desk())return v89OldCashCloseModal();const s=session();if(!s)return modalShell('CAJA','Sin turno abierto','No hay una caja abierta.');const r=v56CloseReport(s);
+ const body='<div class="v89-turn-note">'+esc(r.serial)+' · '+esc(r.venue)+' · '+esc(r.cashbox)+'</div>'+
+ '<div class="v89-turn-card"><h3>Resumen de cobros</h3>'+v57MethodsRows(r)+'</div>'+
+ '<div class="v89-turn-card"><h3>Arqueo de efectivo</h3><div class="field"><label>Efectivo contado físicamente (S/) *</label><input type="number" id="w-count" min="0" step="0.01" inputmode="decimal" placeholder="Importe contado"></div><div class="field" style="margin-top:12px"><label>Observaciones (opcional)</label><textarea id="w-note" rows="2" placeholder="Incidencias del turno"></textarea></div><label class="v57-check" style="margin-top:12px"><input type="checkbox" id="v56-physical-confirm"> Confirmo que he contado físicamente el dinero.</label></div>'+
+ '<div class="v89-close-message">Después de confirmar, el supervisor revisará el cierre y podrás consultar esta constancia únicamente ahora. Tus operaciones quedarán cerradas.</div>';
+ return modalShell('CIERRE DE TURNO','Cerrar caja y jornada',body,actionButton('Volver','closeModal','secondary')+actionButton('Confirmar cierre','submitClose','green'),'v57-tight');};
+// Habilita el cierre tras conteo fisico sin revelar la diferencia antes del registro.
+const v89OldRefreshCount=v57RefreshCount;
+v57RefreshCount=function(){if(!v89Desk())return v89OldRefreshCount();
+ const raw=String(shadow?.getElementById('w-count')?.value??'').trim(),checked=!!shadow?.getElementById('v56-physical-confirm')?.checked;
+ const valid=raw!==''&&/^\d+(?:\.\d{1,2})?$/.test(raw)&&Number.isFinite(Number(raw))&&Number(raw)>=0;
+ const btn=shadow?.querySelector('[data-action="submitClose"]');if(btn){btn.disabled=!(valid&&checked);btn.setAttribute('aria-disabled',String(!(valid&&checked)));}
+};
+// El encargado ve su turno actual, sin panel de cierres anteriores ni efectivo teorico.
+const v89PriorCashView=cashView;
+cashView=function(){if(!v89Desk())return v89PriorCashView();const s=session();if(!s)return '';const report=v56CloseReport(s),p=v57PaymentParts(report);
+ return header('Caja','Operaciones de tu turno actual.')+'<section class="v89-turn-card"><h3>Turno abierto</h3><div class="v89-turn-data"><div><small>Caja</small><strong>'+esc(report.cashbox)+'</strong></div><div><small>Apertura</small><strong>'+esc(v89When(s.openedAt))+'</strong></div><div><small>Turno</small><strong>'+esc(s.number)+'</strong></div><div><small>Cobros registrados</small><strong>'+fmt(p.total)+'</strong></div></div><div class="v89-turn-actions">'+actionButton('Registrar gasto','expense','outline')+actionButton('Entregar efectivo','withdraw','outline')+actionButton('Cerrar turno','closeCash','green')+'</div><p class="v89-turn-note">El conteo y las diferencias se consolidan al cerrar. El supervisor dispone del historial completo.</p></section>'+
+ '<section class="v89-turn-card"><h3>Cobros por medio de pago</h3>'+v57MethodsRows(report)+'</section>'+v57DetailExpandable(report);};
+// Quita los botones de historial del perfil presencial, sin afectar a Administracion.
+const v89PriorMoreView=moreView;
+moreView=function(){const html=v89PriorMoreView();if(!v89Desk())return html;const node=document.createElement('div');node.innerHTML=html;node.querySelectorAll('[data-action="v56History"],[data-action="v56Session"]').forEach(el=>el.remove());return node.innerHTML;};
+// La constancia del cierre solo se muestra inmediatamente tras cerrar; luego no vuelve a abrirse.
+const v89PreviousRender=workerRender;
+workerRender=function(){if(!shadow||!workerReady())return;v89WorkerStyle();
+ if(v89Desk()&&!session()){
+  if(w.page==='v56History')w.page='cash';
+  const root=shadow.getElementById('v51-worker-app');if(root){root.innerHTML=v89ClosedGate();root.dataset.v88Page='v89Closed';}
+  return;
+ }
+ if(v89Desk()&&w.page==='v56History')w.page='cash';
+ if(session()&&w.v89ClosingReceiptId)w.v89ClosingReceiptId=null;
+ v89PreviousRender();
+};
+const v89PriorWorkerClick=onWorkClick;
+onWorkClick=function(e){const b=e.target.closest?.('[data-action]'),a=b?.dataset?.action||'';
+ if(!v89Desk())return v89PriorWorkerClick(e);
+ if(!session()){
+  if(a==='profiles'){e.preventDefault();choose();return;}
+  if(a==='v89OpenTurn'){e.preventDefault();try{
+    const raw=shadow?.getElementById('v89-opening')?.value||'0',number=Number(raw);
+    assert(raw.trim()!==''&&Number.isFinite(number)&&number>=0&&number<=9999999,'Indica un fondo inicial válido.');
+    const s=openCash({opening:number,shift:'Turno presencial'});w.modal=null;w.v89ClosingReceiptId=null;w.page='reservations';workerRender();fire('Turno abierto · Ingreso registrado '+v89When(s.openedAt));
+   }catch(err){fire(err.message||'No se pudo abrir el turno.');}return;}
+  if(a==='v56Print'&&v89RecentReceiptAllowed()){e.preventDefault();try{v56Print(b.dataset.id)}catch(err){fire(err.message)}return;}
+  if(v89RecentReceiptAllowed()&&(a==='closeModal'||e.target?.id==='v51-overlay'||a==='v89FinishClose')){
+   e.preventDefault();w.v89ClosingReceiptId=null;w.modal=null;w.modalId=null;w.page='cash';workerRender();return;
+  }
+  // No se consultan reservas, recibos o movimientos fuera del turno.
+  if(b||e.target?.id==='v51-overlay'){e.preventDefault();return;}
+  return;
+ }
+ if(a==='v56History'||(a==='page'&&b?.dataset.target==='v56History')||a==='v56Session'||a==='v56Print'){
+  e.preventDefault();fire('Los cierres anteriores están disponibles en Administración.');return;
+ }
+ if(a==='submitClose'&&w.modal==='closeCash'){
+  e.preventDefault();try{
+   const raw=String(shadow?.getElementById('w-count')?.value??'').trim();const counted=Number(raw);
+   assert(raw!==''&&Number.isFinite(counted)&&counted>=0&&/^\d+(?:\.\d{1,2})?$/.test(raw),'Ingresa el efectivo contado, con hasta dos decimales.');
+   assert(!!shadow?.getElementById('v56-physical-confirm')?.checked,'Confirma el conteo físico.');
+   const note=shadow?.getElementById('w-note')?.value||'';
+   const closed=closeCash({counted,note});w.v89ClosingReceiptId=closed.id;w.modal='v56Session';w.modalId=closed.id;w.v57ClosingStep=null;workerRender();
+  }catch(err){fire(err.message||'No fue posible cerrar el turno.');}return;
+ }
+ return v89PriorWorkerClick(e);
+};
+// Admin: calendario mensual de aperturas, cierres y excepciones. Sin horas extras automaticas.
+if(!data.v89ShiftSchedules||typeof data.v89ShiftSchedules!=='object')data.v89ShiftSchedules={};
+const v89AdminState={month:v89DateParts(now())?.day.slice(0,7)||day().slice(0,7),user:'all',site:'all',editUser:''};
+function v89DateParts(value){if(!value)return null;const date=new Date(value);if(!Number.isFinite(date.getTime()))return null;const parts=new Intl.DateTimeFormat('en-US',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Lima'}).formatToParts(date);const getPart=t=>parts.find(p=>p.type===t)?.value||'';return {day:getPart('year')+'-'+getPart('month')+'-'+getPart('day'),time:getPart('hour')+':'+getPart('minute')};}
+function v89LocalDay(date){const x=new Date(date+'T12:00:00Z');const d=x.getUTCDay();return d===0?7:d}
+function v89Minutes(time){const m=String(time||'').match(/^(\d{2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):NaN}
+function v89Hours(minutes){const m=Math.max(0,Math.round(Number(minutes)||0));return Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')+' min'}
+function v89OperatorUsers(){return (users()||[]).filter(u=>u.roles?.includes('desk')).sort((a,b)=>String(a.name).localeCompare(String(b.name),'es'))}
+function v89AdminRows(){const year=Number(v89AdminState.month.slice(0,4)),month=Number(v89AdminState.month.slice(5,7)),len=new Date(year,month,0).getDate();const today=day();let entries=[];
+ for(const u of v89OperatorUsers()){
+  if(v89AdminState.user!=='all'&&String(u.id)!==v89AdminState.user)continue;
+  const sched=data.v89ShiftSchedules[String(u.id)]||null;
+  for(let n=1;n<=len;n++){
+   const date=v89AdminState.month+'-'+String(n).padStart(2,'0');if(date>today)continue;
+   const arr=(data.cashSessions||[]).filter(s=>String(s.userId)===String(u.id)&&v89DateParts(s.openedAt)?.day===date);
+   const isPlanned=!!sched?.days?.includes(v89LocalDay(date));if(!arr.length&&!isPlanned)continue;
+   const venueId=sched?.venueId||u.primaryVenueId;
+   if(v89AdminState.site!=='all'&&String(venueId)!==v89AdminState.site&&!(arr.some(s=>String(s.venueId)===v89AdminState.site)))continue;
+   const sorted=arr.slice().sort((a,b)=>String(a.openedAt).localeCompare(String(b.openedAt)));
+   const last=sorted.at(-1),first=sorted[0],earlyTime=v89DateParts(first?.openedAt)?.time||'',outTime=v89DateParts(last?.closedAt)?.time||'';
+   const startPlan=isPlanned?sched.start||'':'';const diff=isPlanned&&earlyTime? v89Minutes(earlyTime)-v89Minutes(startPlan):null;
+   const minutes=arr.filter(s=>!!s.closedAt).reduce((total,s)=>total+Math.max(0,Math.round((new Date(s.closedAt)-new Date(s.openedAt))/60000)),0);
+   const label=!arr.length?'Sin apertura':arr.some(s=>s.status==='Abierta')?'Cierre pendiente':diff>0?'Apertura tardía':diff<0?'Apertura anticipada':'Registrada';
+   entries.push({user:u,day:date,site:site(venueId)?.name||'Sede',shift:isPlanned?sched.start+' – '+sched.end:'No asignado',first:earlyTime||'—',last:outTime||'—',minutes,n:arr.length,label,diff,isPlanned});
+  }
+ }
+ return entries.sort((a,b)=>b.day.localeCompare(a.day)||String(a.user.name).localeCompare(String(b.user.name),'es'));
+}
+function v89AdminAttendancePage(){const employees=v89OperatorUsers(),selected=employees.find(u=>String(u.id)===String(v89AdminState.editUser))||employees[0],schedule=selected&&(data.v89ShiftSchedules[String(selected.id)]||{}),rows=v89AdminRows();const opened=rows.filter(r=>r.n>0).length,pending=rows.filter(r=>r.label==='Cierre pendiente').length,late=rows.filter(r=>r.label==='Apertura tardía').length,missing=rows.filter(r=>r.label==='Sin apertura').length,totalMinutes=rows.reduce((t,r)=>t+r.minutes,0);
+ const byEmployee=employees.filter(u=>v89AdminState.user==='all'||v89AdminState.user===String(u.id)).map(u=>{const list=rows.filter(r=>String(r.user.id)===String(u.id));return {name:u.name,planned:list.filter(r=>r.isPlanned).length,opened:list.filter(r=>r.n>0).length,minutes:list.reduce((t,r)=>t+r.minutes,0),late:list.filter(r=>r.label==='Apertura tardía').length,pending:list.filter(r=>r.label==='Cierre pendiente').length,missing:list.filter(r=>r.label==='Sin apertura').length}});
+ const opts=(items,value)=>items.map(([id,label])=>'<option value="'+esc(id)+'" '+(String(id)===String(value)?'selected':'')+'>'+esc(label)+'</option>').join('');
+ const siteOptions=(data.venues||[]).filter(valid).map(x=>[x.id,x.name]);
+ const status=r=>'<span class="v89-admin-state '+(r.label==='Sin apertura'||r.label==='Cierre pendiente'?'warn':r.label.includes('anticipada')?'muted':'')+'">'+esc(r.label)+'</span>';
+ return '<div class="v89-admin"><div class="v89-admin-header"><div><div class="v89-admin-kicker">ADMINISTRACIÓN GENERAL / PERSONAL</div><h1>Asistencia y turnos</h1><p>Supervisión mensual de aperturas y cierres reales. Los horarios programados sirven para contrastar registros; no calculan remuneraciones.</p></div></div>'+
+ '<section class="v89-admin-box"><div class="v89-admin-controls"><label>Mes<input id="v89-month" type="month" value="'+esc(v89AdminState.month)+'"></label><label>Encargado<select id="v89-user">'+opts([['all','Todos'],...employees.map(u=>[u.id,u.name])],v89AdminState.user)+'</select></label><label>Sede<select id="v89-site">'+opts([['all','Todas las sedes'],...siteOptions],v89AdminState.site)+'</select></label></div></section>'+
+ '<div class="v89-admin-grid"><div class="v89-admin-stat"><small>Días con apertura</small><b>'+opened+'</b></div><div class="v89-admin-stat"><small>Aperturas tardías</small><b>'+late+'</b></div><div class="v89-admin-stat"><small>Cierres pendientes</small><b>'+pending+'</b></div><div class="v89-admin-stat"><small>Días sin apertura</small><b>'+missing+'</b></div><div class="v89-admin-stat"><small>Tiempo registrado</small><b>'+v89Hours(totalMinutes)+'</b></div></div>'+
+ '<section class="v89-admin-box"><h3 style="margin:0 0 12px;font-size:16px">Registro mensual</h3><div class="v89-admin-table-wrap"><table class="v89-admin-table"><thead><tr><th>Fecha</th><th>Encargado</th><th>Sede</th><th>Horario asignado</th><th>Apertura / ingreso</th><th>Cierre / salida</th><th>Duración</th><th>Turnos</th><th>Observación</th></tr></thead><tbody>'+
+ (rows.map(r=>'<tr><td><b>'+esc(r.day)+'</b></td><td>'+esc(r.user.name)+'</td><td>'+esc(r.site)+'</td><td>'+esc(r.shift)+'</td><td>'+esc(r.first)+'</td><td>'+esc(r.last)+'</td><td>'+v89Hours(r.minutes)+'</td><td>'+r.n+'</td><td>'+status(r)+'</td></tr>').join('')||'<tr><td colspan="9">No hay registros para los filtros seleccionados.</td></tr>')+'</tbody></table></div><p style="margin-top:12px">«Sin apertura» indica ausencia de registro, no acredita por sí solo una falta laboral. Las incidencias y remuneraciones se revisan por separado.</p></section>'+
+ +'<section class="v89-admin-box"><h3 style="margin:0 0 12px;font-size:16px">Resumen por encargado</h3><div class="v89-admin-table-wrap"><table class="v89-admin-table"><thead><tr><th>Encargado</th><th>Días programados</th><th>Días con apertura</th><th>Tiempo registrado</th><th>Tardanzas</th><th>Sin apertura</th><th>Cierres pendientes</th></tr></thead><tbody>'+byEmployee.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td>'+x.planned+'</td><td>'+x.opened+'</td><td>'+v89Hours(x.minutes)+'</td><td>'+x.late+'</td><td>'+x.missing+'</td><td>'+x.pending+'</td></tr>').join('')+'</tbody></table></div></section>'+
+ '<section class="v89-admin-box"><h3 style="margin:0 0 8px;font-size:16px">Asignar horario de referencia</h3><div class="v89-admin-controls"><label>Encargado<select id="v89-edit-user">'+opts(employees.map(u=>[u.id,u.name]),selected?.id||'')+'</select></label><label>Sede<select id="v89-edit-site">'+opts(siteOptions,schedule?.venueId||selected?.primaryVenueId||'')+'</select></label><label>Inicio<input id="v89-edit-start" type="time" value="'+esc(schedule?.start||'08:00')+'"></label><label>Fin<input id="v89-edit-end" type="time" value="'+esc(schedule?.end||'16:00')+'"></label></div><div class="v89-admin-days">'+['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((label,i)=>'<label><input type="checkbox" data-v89-weekday="'+(i+1)+'" '+((schedule?.days||[1,2,3,4,5]).includes(i+1)?'checked':'')+'> '+label+'</label>').join('')+'</div><button type="button" class="v89-admin-btn" data-v89-admin="save">Guardar horario</button><p style="margin-top:10px">La apertura fuera de horario queda registrada. No genera automáticamente horas extras ni cambia el horario asignado.</p></section></div>';
+}
+const v89AdminGroup=menuGroups.find(g=>g.label==='SISTEMA Y CONTROL'||g.label==='ADMINISTRACIÓN DEL SISTEMA'||g.label==='ADMINISTRACIÓN');
+if(v89AdminGroup&&!v89AdminGroup.items.some(x=>x[0]==='v89Attendance'))v89AdminGroup.items.push(['v89Attendance','Asistencia y turnos','clock']);
+namePages.v89Attendance='Asistencia y turnos';
+const v89OldAdminRender=render;
+render=function(...args){if(role()!=='admin'||page!=='v89Attendance')return v89OldAdminRender(...args);
+ const target=page;page='v51Users';v89OldAdminRender(...args);page=target;
+ const content=document.getElementById('content');if(content){content.className='workspace';content.innerHTML=v89AdminAttendancePage();}
+ const side=document.getElementById('desktop-sidebar');if(side)side.innerHTML=sidebar();
+ const mobile=document.getElementById('mobilebar');if(mobile)mobile.innerHTML=mobilebar();
+ const crumb=document.getElementById('crumb');if(crumb)crumb.textContent='Asistencia y turnos';
+};
+document.addEventListener('change',e=>{if(role()!=='admin'||page!=='v89Attendance')return;
+ const id=e.target?.id;if(!['v89-month','v89-user','v89-site','v89-edit-user'].includes(id))return;
+ const key={'v89-month':'month','v89-user':'user','v89-site':'site','v89-edit-user':'editUser'}[id];v89AdminState[key]=e.target.value;render();
+});
+document.addEventListener('click',e=>{const btn=e.target?.closest?.('[data-v89-admin="save"]');if(!btn)return;e.preventDefault();if(role()!=='admin')return;
+ try{const u=document.getElementById('v89-edit-user')?.value,venueId=document.getElementById('v89-edit-site')?.value,start=document.getElementById('v89-edit-start')?.value,end=document.getElementById('v89-edit-end')?.value;
+  const days=[...document.querySelectorAll('[data-v89-weekday]:checked')].map(x=>Number(x.dataset.v89Weekday));
+  assert(getUser(u)?.roles.includes('desk'),'Selecciona un encargado presencial.');
+  assert(/^\d{2}:\d{2}$/.test(start)&&/^\d{2}:\d{2}$/.test(end)&&start!==end,'Define un horario válido.');
+  assert(days.length,'Selecciona al menos un día de trabajo.');
+  assert(site(venueId),'Selecciona una sede válida.');
+  data.v89ShiftSchedules[String(u)]={venueId:Number(venueId),start,end,days,updatedAt:now(),updatedById:current().id};
+  audit('Horario de encargado actualizado',{userId:u,venueId,start,end,days});persistAll();render();toast('Horario guardado.');
+ }catch(err){toast(err.message||'No fue posible guardar el horario.');}
+},true);
+Object.assign(window.V51,{openCash,closeCash});
+window.ElevaTurnos={getCurrent:()=>({userId:current().id,role:role(),open:!!session(),sessionId:session()?.id||null}),monthly:()=>role()==='admin'?v89AdminRows():[],schedule:(id)=>role()==='admin'||String(id)===String(current().id)?data.v89ShiftSchedules[String(id)]||null:null};
+
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
 })();
