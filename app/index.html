@@ -16947,7 +16947,21 @@ window.V68Client={_test:{rentals:v68Rentals,receipts:v68Receipts,stats:v68Stats,
   if(a==='v72Edit'){const r=get(list(),w.modalId);assert(r&&canOwnEdit(r),'No puedes editar esta ocupación.');w.v72EditId=r.id;w.v72Draft=baseDraft({...r,repeat:'once',endDate:r.date});w.modal='v72Form';workerRender();}
   if(a==='v72Save'){const draft=readForm();const saved=saveDraft(draft,w.v72EditId);w.v72EditId=null;w.v72Draft=null;w.modal='v72Detail';w.modalId=saved.records[0].id;workerRender();fireV72(saved.records.length+' fecha(s) '+(saved.active?'registradas':'enviadas para autorización')+'.');}
   if(a==='v72CancelForm'){w.modal='v72Cancel';workerRender();}
-  if(a==='v72CancelConfirm'){const note=shadow.getElementById('v72-cancel-note')?.value||'';changeStatus(w.modalId,'Cancelado',note);w.modal='v72Detail';workerRender();fireV72('Ocupación cancelada. Canchas liberadas.');}
+  if(a==='v72CancelConfirm'){
+   const note=shadow.getElementById('v72-cancel-note')?.value||'';
+   const cancelAll=!!shadow.getElementById('v99-cancel-all')?.checked;
+   if(cancelAll){
+    assert(String(note).trim().length>=8,'Indica un motivo de al menos 8 caracteres.');
+    const chosen=get(list(),w.modalId);assert(chosen&&chosen.groupId,'No existe una programaci\u00f3n vinculada.');
+    const related=list().filter(x=>x.groupId===chosen.groupId&&['Pendiente','Activo'].includes(x.status));
+    assert(related.length>0,'No quedan fechas de esta programaci\u00f3n por cancelar.');
+    assert(related.every(x=>allowed(current(),x.venueId)&&canOwnEdit(x)),'No tienes permiso para cancelar todas las fechas.');
+    related.forEach(x=>changeStatus(x.id,'Cancelado',note));
+    w.modal='v72Detail';workerRender();fireV72(related.length+' fechas canceladas. Canchas liberadas.');
+   }else{
+    changeStatus(w.modalId,'Cancelado',note);w.modal='v72Detail';workerRender();fireV72('Ocupaci\u00f3n cancelada. Canchas liberadas.');
+   }
+  }
  }catch(err){console.error('[Eleva usos internos]',err);fireV72(err.message||'No se pudo completar la operación.');}}
  const oldRender=workerRender;
  workerRender=function(){oldRender();if(!shadow)return;if(!shadow.getElementById('v72-style')){const s=document.createElement('style');s.id='v72-style';s.textContent=V72_STYLE;shadow.prepend(s);}};
@@ -19257,6 +19271,27 @@ const V89_WORKER_CSS=`
 .v89-turn-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .v89-turn-note{font-size:11px;color:#6f858a;line-height:1.5;margin-top:12px}
 .v89-close-message{padding:11px 12px;background:#edf6f0;border-radius:10px;font-size:11px;line-height:1.5;color:#38684f;margin:10px 0}
+
+/* Resumen de Caja: tarjeta de estado + dos indicadores en una sola franja. */
+.v98-cash-hero{background:#12232d;color:#fff;border-radius:17px;padding:18px 19px 17px;margin:12px 0 10px;min-width:0;box-sizing:border-box}
+.v98-cash-head{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
+.v98-cash-identity{display:flex;align-items:center;gap:10px;min-width:0}
+.v98-cash-identity .i{color:#00e64d;flex:0 0 auto}
+.v98-cash-identity strong{font-size:15px;font-weight:750;letter-spacing:-.02em;line-height:1.3;color:#fff;overflow-wrap:anywhere}
+.v98-cash-status{color:#c3f5d1;font-size:11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;font-weight:700}
+.v98-cash-status i{width:7px;height:7px;display:block;background:#00e64d;border-radius:50%;flex-shrink:0}
+.v98-cash-open{font-size:12px;color:#b7c9cf;margin-top:10px;line-height:1.4}
+.v98-cash-overview{display:grid;grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr);align-items:center;gap:14px;background:#fff;border:1px solid #e0e9e5;border-radius:15px;padding:15px 17px;margin:0 0 12px;min-width:0}
+.v98-cash-metric{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}
+.v98-cash-metric small{font-size:11px;color:#6b8187;font-weight:650;line-height:1.3}
+.v98-cash-metric strong{font-size:21px;color:#12232d;font-weight:800;line-height:1.12;white-space:nowrap;letter-spacing:-.04em}
+.v98-cash-separator{width:1px;height:42px;background:#e2e9e7}
+.v98-cash-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px;min-width:0}
+.v98-cash-actions .btn{width:100%;min-width:0;min-height:51px;padding:9px 6px;white-space:normal;line-height:1.25;font-size:11px;border-radius:11px;text-align:center}
+.v98-cash-actions .btn.green{background:#00e64d;color:#12232d}
+@media(max-width:370px){.v98-cash-hero{padding:16px}.v98-cash-overview{gap:9px;padding:13px 12px}.v98-cash-metric strong{font-size:19px}.v98-cash-actions{gap:6px}.v98-cash-actions .btn{font-size:10px}}
+@media(min-width:720px){.v98-cash-hero{padding:22px 24px}.v98-cash-overview{padding:17px 22px}.v98-cash-actions .btn{max-width:220px}}
+
 @media(max-width:420px){.v89-gate-top{height:65px}.v89-gate-wrap{min-height:calc(100dvh - 65px);align-items:start;padding-top:25px}.v89-turn-data{gap:7px}}
 `;
 const v89AdminCss=document.createElement('style');v89AdminCss.id='eleva-control-turnos';v89AdminCss.textContent=`
@@ -19310,10 +19345,76 @@ v57RefreshCount=function(){if(!v89Desk())return v89OldRefreshCount();
  const btn=shadow?.querySelector('[data-action="submitClose"]');if(btn){btn.disabled=!(valid&&checked);btn.setAttribute('aria-disabled',String(!(valid&&checked)));}
 };
 // El encargado ve su turno actual, sin panel de cierres anteriores ni efectivo teorico.
-const v89PriorCashView=cashView;
-cashView=function(){if(!v89Desk())return v89PriorCashView();const s=session();if(!s)return '';const report=v56CloseReport(s),p=v57PaymentParts(report);
- return header('Caja','Operaciones de tu turno actual.')+'<section class="v89-turn-card"><h3>Turno abierto</h3><div class="v89-turn-data"><div><small>Caja</small><strong>'+esc(report.cashbox)+'</strong></div><div><small>Apertura</small><strong>'+esc(v89When(s.openedAt))+'</strong></div><div class="v93-cash-collected"><small>Cobros registrados</small><strong>'+fmt(p.total)+'</strong></div></div><div class="v89-turn-actions">'+actionButton('Registrar gasto','expense','outline')+actionButton('Entregar efectivo','withdraw','outline')+actionButton('Cerrar turno','closeCash','green')+'</div></section>'+
- '<section class="v89-turn-card"><h3>Cobros por medio de pago</h3>'+v57MethodsRows(report)+'</section>'+v57DetailExpandable(report);};
+// La caja asignada conserva el nombre configurado por Administracion.
+// Solo cambian el resumen y el encabezado del perfil Encargado.
+function v98CashOpenLabel(s){
+ const opened=new Date(s.openedAt);
+ if(!Number.isFinite(opened.getTime()))return 'Apertura';
+ const zone='America/Lima';
+ const tm=new Intl.DateTimeFormat('es-PE',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:zone}).format(opened);
+ const openedDay=v89DateParts(s.openedAt)?.day||'';
+ const todayDay=v89DateParts(now())?.day||'';
+ const dt=openedDay!==todayDay?new Intl.DateTimeFormat('es-PE',{day:'numeric',month:'short',timeZone:zone}).format(opened)+' · ':'';
+ return 'Apertura · '+dt+tm;
+}
+function v98ShiftBounds(s){
+ const opened=v89DateParts(s.openedAt),base=opened?.day;
+ const startTime=String(s.v89ScheduledStart||v89Shift()?.start||'');
+ const endTime=String(s.v89ScheduledEnd||v89Shift()?.end||'');
+ if(!base||!/^\d{2}:\d{2}$/.test(startTime)||!/^\d{2}:\d{2}$/.test(endTime)||startTime===endTime)return null;
+ const t=(d,h)=>new Date(d+'T'+h+':00-05:00').getTime();
+ let start=t(base,startTime),end=t(base,endTime);
+ if(!Number.isFinite(start)||!Number.isFinite(end))return null;
+ // Si el encargado abrio un turno nocturno despues de medianoche, su inicio fue el dia anterior.
+ const openedAt=new Date(s.openedAt).getTime();
+ if(end<=start){
+  if(openedAt<=end){start-=86400000;}else{end+=86400000;}
+ }
+ return {start,end};
+}
+function v98ReservationCount(s){
+ const bounds=v98ShiftBounds(s);
+ const localToday=v89DateParts(now())?.day||day();
+ const allowedStatus=new Set(['Confirmada','Reservada','Reservado']);
+ const items=(data.v48RentalOps||[]).filter(r=>Number(r.venueId)===Number(s.venueId)&&allowedStatus.has(r.status));
+ const count=items.filter(r=>{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(r.date||'')))return false;
+  if(!bounds)return r.date===localToday;
+  const snap=getSnap(r),time=String(r.startTime||snap.startTime||'');
+  if(!/^\d{2}:\d{2}$/.test(time))return false;
+  const begin=new Date(r.date+'T'+time+':00-05:00').getTime();
+  if(!Number.isFinite(begin))return false;
+  const duration=Number(snap.duration??r.duration)||0;
+  let finish=begin+Math.max(1,duration)*60000;
+  const endClock=String(snap.endTime||r.endTime||'');
+  if(/^\d{2}:\d{2}$/.test(endClock)){
+   finish=new Date(r.date+'T'+endClock+':00-05:00').getTime();
+   if(finish<=begin)finish+=86400000;
+  }
+  return begin<bounds.end&&finish>bounds.start;
+ }).length;
+ return {count,label:bounds?'Reservas del turno':'Reservas de hoy'};
+}
+const v98PriorCashView=cashView;
+cashView=function(){
+ if(!v89Desk())return v98PriorCashView();
+ const s=session();if(!s)return '';
+ const report=v56CloseReport(s),payments=v57PaymentParts(report),bookings=v98ReservationCount(s);
+ // report.cashbox se obtiene de la caja asociada al turno y no es texto fijo.
+ const title=header('Caja','').replace('<p class="page-sub"></p>','');
+ return title+
+  '<section class="v98-cash-hero" aria-label="Estado del turno">'+
+    '<div class="v98-cash-head"><div class="v98-cash-identity">'+ico('wallet','sm')+'<strong>'+esc(report.cashbox)+'</strong></div><span class="v98-cash-status"><i></i>Abierta</span></div>'+
+    '<div class="v98-cash-open">'+esc(v98CashOpenLabel(s))+'</div>'+
+  '</section>'+
+  '<section class="v98-cash-overview" aria-label="Resumen del turno">'+
+    '<div class="v98-cash-metric"><small>'+esc(bookings.label)+'</small><strong class="num">'+bookings.count+'</strong></div>'+
+    '<span class="v98-cash-separator" aria-hidden="true"></span>'+
+    '<div class="v98-cash-metric"><small>Cobros registrados</small><strong class="num">'+fmt(payments.total)+'</strong></div>'+
+  '</section>'+
+  '<div class="v98-cash-actions">'+actionButton('Registrar gasto','expense','outline')+actionButton('Entregar efectivo','withdraw','outline')+actionButton('Cerrar turno','closeCash','green')+'</div>'+
+  '<section class="v89-turn-card"><h3>Cobros por medio de pago</h3>'+v57MethodsRows(report)+'</section>'+v57DetailExpandable(report);
+};
 // Quita los botones de historial del perfil presencial, sin afectar a Administracion.
 const v89PriorMoreView=moreView;
 moreView=function(){const html=v89PriorMoreView();if(!v89Desk())return html;const node=document.createElement('div');node.innerHTML=html;node.querySelectorAll('[data-action="v56History"],[data-action="v56Session"]').forEach(el=>el.remove());return node.innerHTML;};
@@ -19978,6 +20079,467 @@ reservationBody=function(){
  result=result.replace('<div class="v87-results-empty">No hay reservas con estos filtros.</div>','');
  return result+'<div class="v95-internal-list" style="margin-top:19px"><div class="section-title"><h2>Usos internos y bloqueos</h2></div><div class="stack">'+uses.map(window.__elevaInternalUnifiedCard).join('')+'</div></div>';
 };
+/* Eleva Sport | Reserva de cliente: selector visual sin fusionar los motores comerciales.
+   El formulario, la validacion, los descuentos y la generacion siguen siendo los existentes. */
+const V97_STYLES = `
+#v51-worker-app .v97-modebar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:4px;margin:0 0 17px;background:#eef3f1;border:1px solid #e0e8e5;border-radius:13px;min-width:0}
+#v51-worker-app .v97-modebar button{appearance:none;border:0;min-width:0;min-height:41px;border-radius:10px;background:transparent;color:#586f76;font:inherit;font-weight:750;font-size:12px;line-height:1.1;cursor:pointer;padding:8px 3px;white-space:nowrap}
+#v51-worker-app .v97-modebar button[aria-selected="true"]{background:#12232d;color:white;box-shadow:0 1px 5px rgba(18,35,45,.15)}
+#v51-worker-app .v97-modebar button:focus-visible{outline:2px solid #00b94e;outline-offset:1px}
+#v51-worker-app .v97-native-picker{position:relative;display:flex;align-items:center;justify-content:space-between;min-width:0!important;max-width:100%!important;width:100%!important;height:48px!important;min-height:48px!important;max-height:48px!important;overflow:hidden;box-sizing:border-box;border:1px solid #d7e2df;border-radius:12px;background:#fff;color:#182d37}
+#v51-worker-app .v97-native-picker:focus-within{outline:2px solid rgba(0,192,74,.23);border-color:#2eaf65}
+#v51-worker-app .v97-native-picker .v97-picker-value{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px 0 13px;font-size:15px!important;line-height:20px!important;font-weight:500;pointer-events:none}
+#v51-worker-app .v97-native-picker .v97-picker-icon{display:flex;align-items:center;justify-content:center;flex:0 0 32px;margin-right:7px;color:#687b82;pointer-events:none}
+#v51-worker-app .v97-native-picker .v97-picker-icon svg{width:17px;height:17px}
+#v51-worker-app .v97-native-picker > input:is([type="date"],[type="time"],[type="datetime-local"]){position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;z-index:2!important;display:block!important;width:100%!important;inline-size:100%!important;min-width:0!important;max-width:100%!important;height:100%!important;min-height:0!important;max-height:100%!important;box-sizing:border-box!important;opacity:0!important;appearance:none!important;-webkit-appearance:none!important;border:0!important;margin:0!important;padding:0!important;cursor:pointer;touch-action:manipulation}
+#v51-worker-app .sheet-body:has(>.v72-chipline){padding-top:18px!important}
+#v51-worker-app .sheet-body>.v72-chipline:first-child{margin-top:0!important;margin-bottom:15px!important}
+#v51-worker-app .sheet-body:has(.v97-modebar){min-width:0;overflow-x:hidden}
+#v51-worker-app .sheet-body .v54-field,#v51-worker-app .sheet-body .field{min-width:0}
+#v51-worker-app .v97-choice-options .v55-choice-item{min-height:90px}
+@media(max-width:355px){#v51-worker-app .v97-modebar button{font-size:11px;padding:8px 0}}
+`;
+const v97BaseReservationChoice = v55ReservationChoice;
+v55ReservationChoice = function(){
+ const options = [
+  ['v97Client','calendar','Reserva de cliente','Una fecha, varias fechas o una programaci\u00f3n recurrente.'],
+  ['v72New','grid','Uso interno / bloqueo operativo','Actividades propias o mantenimiento. Sin venta ni cobro.']
+ ];
+ return v55CenterShell('RESERVAS','Nueva reserva',
+  '<div class="v55-choice-options v97-choice-options">'+options.map(([a,ic,t,desc])=>
+  '<button type="button" class="v55-choice-item" data-action="'+a+'"><span class="v55-choice-ico">'+ico(ic)+'</span><span class="v55-choice-text"><strong>'+t+'</strong><small>'+desc+'</small></span>'+ico('chevron')+'</button>').join('')+'</div>',
+  actionButton('Cancelar','closeModal','secondary'));
+};
+function v97Mode(){
+ if(w.modal==='newRental')return 'single';
+ if(w.modal==='v54Create')return v54SelectedDraft()?.mode==='custom'?'custom':'recurrent';
+ return null;
+}
+function v97ModeBar(mode){
+ const choices=[['single','\u00danica'],['custom','Varias fechas'],['recurrent','Recurrente']];
+ return '<div class="v97-modebar" role="tablist" aria-label="Modalidad de reserva de cliente">'+
+ choices.map(([id,t])=>'<button type="button" role="tab" data-action="v97Mode" data-mode="'+id+'" aria-selected="'+(mode===id?'true':'false')+'"'+' tabindex="0"'+'>'+t+'</button>').join('')+'</div>';
+}
+function v97BeginClient(){
+ w.v97Drafts={single:newDraft(),custom:null,recurrent:null};
+ w.draft=w.v97Drafts.single;
+ w.v97ClientFlow=true;
+ w.v97ResetScroll=true;
+ openWorkerModal('newRental');
+}
+function v97CaptureMode(){
+ if(!w.v97Drafts)w.v97Drafts={single:w.draft||newDraft(),custom:null,recurrent:null};
+ const mode=v97Mode();
+ if(mode==='single'){
+  try{w.v97Drafts.single=captureDraft();}catch(e){w.v97Drafts.single=w.draft;}
+ }else if(mode==='custom'||mode==='recurrent'){
+  w.v97Drafts[mode]=v54SelectedDraft();
+ }
+}
+function v97SwitchMode(target){
+ const before=v97Mode();
+ if(!['single','custom','recurrent'].includes(target)||!before||target===before)return;
+ v97CaptureMode();
+ const drafts=w.v97Drafts;
+ const previous=before==='single'?drafts.single:drafts[before];
+ w.v97ResetScroll=true;
+ if(target==='single'){
+  w.draft=drafts.single||newDraft();
+  w.modal='newRental';w.modalId=null;workerRender();return;
+ }
+ if(drafts[target]){
+  v54SetDraft(drafts[target]);
+ }else{
+  v54Start(target==='custom'?'custom':'weekly');
+  const fresh=v54SelectedDraft();
+  if(previous){
+   if(previous.customerId!=null)fresh.customerId=Number(previous.customerId)||fresh.customerId;
+   if(previous.venueId!=null)fresh.venueId=Number(previous.venueId)||fresh.venueId;
+   if(previous.channel)fresh.channel=previous.channel;
+  }
+  drafts[target]=fresh;
+ }
+ w.modal='v54Create';w.modalId=null;workerRender();
+}
+function v97PickerDisplay(el){
+ const value=String(el.value||'');
+ const months=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+ const dateMatch=value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+ if(el.type==='date'||el.type==='datetime-local'){
+  let date='Seleccionar fecha';
+  if(dateMatch){const m=Number(dateMatch[2]);if(m>=1&&m<=12)date=Number(dateMatch[3])+' '+months[m-1]+' '+dateMatch[1];}
+  return el.type==='datetime-local'?date+' · '+(value.slice(11,16)||'--:--'):date;
+ }
+ return /^\d{2}:\d{2}/.test(value)?value.slice(0,5):'Seleccionar hora';
+}
+function v97PickerUI(el){
+ if(el.closest('.v97-native-picker'))return;
+ const parent=el.parentNode;
+ if(!parent)return;
+ const shell=document.createElement('span');shell.className='v97-native-picker';
+ const shown=document.createElement('span');shown.className='v97-picker-value';shown.textContent=v97PickerDisplay(el);
+ const graphic=document.createElement('span');graphic.className='v97-picker-icon';graphic.innerHTML=ico(el.type==='time'?'clock':'calendar','sm');
+ const nearbyLabel=el.closest('.field,.v54-field')?.querySelector('label')?.textContent?.trim();
+ if(!el.getAttribute('aria-label')&&nearbyLabel)el.setAttribute('aria-label',nearbyLabel);
+ parent.insertBefore(shell,el);shell.append(shown,graphic,el);
+}
+const v97PreviousWorkerRender=workerRender;
+let v97PreviouslyRenderedModal=null;
+workerRender=function(...args){
+ const out=v97PreviousWorkerRender(...args);
+ if(!shadow)return out;
+ if(!shadow.getElementById('v97-client-styles')){
+  const st=document.createElement('style');st.id='v97-client-styles';st.textContent=V97_STYLES;shadow.appendChild(st);
+ }
+ const root=shadow.getElementById('v51-worker-app');
+ const mode=v97Mode(),body=root?.querySelector('.overlay .sheet-body');
+ if(mode&&body){
+  body.insertAdjacentHTML('afterbegin',v97ModeBar(mode));
+  // The old in-form link duplicates the new tabs; preserve its logic, not its visual repetition.
+  if(mode==='single')body.querySelector('.v80-rec-link')?.remove();
+  const choice=body.querySelector('select[data-v54-field="mode"]');
+  if(choice){
+   if(mode==='custom'){
+    choice.closest('.v54-field')?.remove();
+   }else{
+    choice.querySelector('option[value="custom"]')?.remove();
+    const label=choice.closest('.v54-field')?.querySelector('label');
+    if(label)label.textContent='Frecuencia';
+   }
+  }
+ }
+ root?.querySelectorAll('.overlay .sheet-body input:is([type="date"],[type="time"],[type="datetime-local"])').forEach(v97PickerUI);
+ if(body&&(v97PreviouslyRenderedModal!==w.modal||w.v97ResetScroll)){
+  body.scrollTop=0;
+  const modal=root.querySelector('.overlay .sheet');if(modal)modal.scrollTop=0;
+  w.v97ResetScroll=false;
+ }
+ v97PreviouslyRenderedModal=w.modal;
+ return out;
+};
+const v97PreviousOnWorkClick=onWorkClick;
+onWorkClick=function(e){
+ const button=e.target?.closest?.('[data-action="v97Client"],[data-action="v97Mode"]');
+ if(button){
+  e.preventDefault();e.stopPropagation();
+  try{
+   if(button.dataset.action==='v97Client')v97BeginClient();
+   else v97SwitchMode(button.dataset.mode);
+  }catch(err){console.error('[Eleva reservas]',err);fire(err.message||'No se pudo cambiar la modalidad.');}
+  return;
+ }
+ return v97PreviousOnWorkClick(e);
+};
+const v97PreviousOnWorkChange=onWorkChange;
+onWorkChange=function(e){
+ const picker=e.target?.closest?.('.v97-native-picker');
+ if(picker){const label=picker.querySelector('.v97-picker-value');if(label)label.textContent=v97PickerDisplay(e.target);}
+ return v97PreviousOnWorkChange(e);
+};
+// The text shown by the native input overlay changes only when its real value changes.
+window.ElevaReservaCliente={
+ modes:['single','custom','recurrent'],
+ activeMode:()=>v97Mode(),
+ layout:'navigation-only',
+ hasPreservedDrafts:()=>!!w.v97Drafts
+};
+
+
+/* Eleva Sport | Accesos operativos y trazabilidad de reservas internas.
+   Conservar los motores de reservas, caja y cancelacion: esta capa solo presenta los registros existentes. */
+const V99_CSS = `
+#v51-worker-app .v99-list-filterbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0 9px;min-width:0}
+#v51-worker-app .v99-list-filterbar label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:650;color:#607780;min-width:0}
+#v51-worker-app .v99-list-filterbar select{width:100%;min-width:0;max-width:100%;height:43px;padding:7px 26px 7px 11px;background:#fff;border:1px solid #dce6e2;border-radius:11px;color:#12232d;font-size:13px;box-sizing:border-box}
+#v51-worker-app .v99-list-count{font-size:11px;color:#6b7f86;margin:2px 0 10px}
+#v51-worker-app .v99-cancelled .v52-booking-line{background:#aeb9bc!important}
+#v51-worker-app .v99-cancelled .v52-booking-name{color:#52636c}
+#v51-worker-app .v99-state-cancelled{color:#746163!important;background:#f6eded!important;border:1px solid #eddddc!important}
+#v51-worker-app .v99-state-rejected{color:#8b603a!important;background:#fbf2e8!important;border:1px solid #efddc7!important}
+#v51-worker-app .v99-list-more{display:block;width:100%;min-height:42px;margin:12px 0 5px;border:1px solid #dae4e0;border-radius:11px;background:#fff;color:#153f31;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+#v51-worker-app .v99-cancel-facts{border:1px solid #eadbd9;border-radius:12px;background:#fff8f7;padding:12px 13px;margin:6px 0 15px;color:#563b3a;line-height:1.5;font-size:12px}
+#v51-worker-app .v99-cancel-facts strong{font-size:12px;display:block;margin-bottom:4px}
+#v51-worker-app .v99-cancel-facts small{display:block;color:#825f5b;font-size:11px;margin-top:4px}
+#v51-worker-app .v99-cancel-scope{margin:0 0 15px;border:1px solid #dfe7e4;border-radius:12px;padding:12px 13px;background:#f8fbf9}
+#v51-worker-app .v99-cancel-scope>strong{font-size:12px;display:block;color:#12232d;margin-bottom:9px}
+#v51-worker-app .v99-cancel-scope label{display:flex;align-items:center;gap:10px;min-height:32px;font-size:12px;color:#435a60;line-height:1.45;cursor:pointer}
+#v51-worker-app .v99-cancel-scope input{width:17px;height:17px;flex:none;accent-color:#2aa660}
+#v51-worker-app .top-right{position:relative}
+#v51-worker-app .v99-profile-popover{position:absolute;right:0;top:calc(100% + 12px);z-index:55;width:min(290px,calc(100vw - 26px));padding:9px;border-radius:15px;background:#fff;border:1px solid #dde6e3;box-shadow:0 16px 45px rgba(7,25,32,.19);box-sizing:border-box}
+#v51-worker-app .v99-profile-intro{display:flex;align-items:center;gap:10px;padding:7px 8px 11px;border-bottom:1px solid #e7efeb;margin-bottom:5px;min-width:0}
+#v51-worker-app .v99-profile-intro strong{display:block;color:#12232d;font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+#v51-worker-app .v99-profile-intro small{display:block;color:#6c8086;font-size:11px;line-height:1.45;margin-top:3px}
+#v51-worker-app .v99-menu-action{width:100%;display:flex;align-items:center;gap:9px;min-height:40px;border:0;background:transparent;border-radius:9px;text-align:left;font:inherit;font-size:12px;font-weight:650;color:#12232d;padding:9px 10px;cursor:pointer}
+#v51-worker-app .v99-menu-action:hover{background:#f2f6f3}
+#v51-worker-app .v99-profile-photo{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#15303b;flex:none}
+#v51-worker-app .profile-menu-btn .v99-profile-photo{width:100%;height:100%;border-radius:50%}
+#v51-worker-app .v99-profile-scrim{position:fixed;inset:0;background:transparent;border:0;z-index:28;cursor:default}
+#v51-worker-app .v99-photo-file{display:none!important}
+#v51-worker-app .v99-profile-card{display:flex;align-items:center;gap:13px;margin:3px 0 15px}
+#v51-worker-app .v99-profile-card .v99-profile-photo{height:60px;width:60px}
+#v51-worker-app .v99-profile-card strong{font-size:16px;color:#12232d}
+#v51-worker-app .v99-profile-card small{display:block;margin-top:4px;color:#647c83;font-size:12px}
+#v51-worker-app .v99-history-filters{display:grid;grid-template-columns:minmax(0,1fr) 124px;gap:8px;margin:0 0 13px}
+#v51-worker-app .v99-history-filters input,#v51-worker-app .v99-history-filters select{height:43px;border:1px solid #dce6e2;border-radius:10px;padding:9px 10px;min-width:0;width:100%;background:#fff;box-sizing:border-box;font-size:14px}
+#v51-worker-app .v99-history-item{width:100%;border:1px solid #e2e9e6;border-radius:12px;background:#fff;padding:11px 12px;margin-bottom:8px;text-align:left;color:#12232d;display:block}
+#v51-worker-app button.v99-history-item{cursor:pointer}
+#v51-worker-app .v99-history-item strong{font-size:12px;display:block;line-height:1.45}
+#v51-worker-app .v99-history-item small{font-size:11px;display:block;color:#6a8086;line-height:1.4;margin-top:4px}
+@media(max-width:350px){#v51-worker-app .v99-history-filters{grid-template-columns:1fr}}
+`;
+function v99PhotoMarkup(u,cls=''){
+ if(u.v99ProfilePhoto&&String(u.v99ProfilePhoto).startsWith('data:image/'))return '<img class="v99-profile-photo '+cls+'" src="'+esc(u.v99ProfilePhoto)+'" alt="Foto de perfil">';
+ return '<span class="avatar '+cls+'">'+esc(String(u.name||'').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase())+'</span>';
+}
+// Ordena tarjetas existentes, sin reescribir las acciones ni sus permisos.
+const v99EarlierMoreView=moreView;
+moreView=function(){
+ const html=v99EarlierMoreView();
+ if(!v89Desk())return html;
+ const wrapper=document.createElement('div');wrapper.innerHTML=html;
+ const list=wrapper.querySelector('.stack');if(!list)return html;
+ const priority=['Tarifas de canchas','Programaciones','Movimientos de cobros','Cotizaciones','Clientes','Eventos','Solicitudes','Historial','Incidencias'];
+ const found=new Map();
+ for(const el of [...list.querySelectorAll(':scope > .more-card')]){
+  const title=el.querySelector('.more-title')?.textContent?.trim()||'';
+  if(['Hoy','Mi perfil','Cambiar espacio','Mis cierres'].includes(title)){el.remove();continue;}
+  if(found.has(title)){el.remove();continue;}
+  found.set(title,el);
+ }
+ const ordered=priority.map(t=>found.get(t)).filter(Boolean);
+ const rest=[...found.entries()].filter(([label])=>!priority.includes(label)).map(([,el])=>el);
+ list.replaceChildren(...ordered,...rest);
+ return wrapper.innerHTML;
+};
+// El cambio de perfil deja de ocupar espacio dentro de la barra lateral del encargado.
+const v99EarlierSidebar=sidebar;
+sidebar=function(){
+ const html=v99EarlierSidebar();if(!v89Desk())return html;
+ const wrapper=document.createElement('div');wrapper.innerHTML=html;
+ wrapper.querySelectorAll('.v51-quit').forEach(n=>n.remove());
+ return wrapper.innerHTML;
+};
+const v99EarlierTopbar=topbar;
+topbar=function(){
+ const html=v99EarlierTopbar();if(!v89Desk())return html;
+ const u=current(),wrapper=document.createElement('div');wrapper.innerHTML=html;
+ const avatar=wrapper.querySelector('.profile-menu-btn');if(!avatar)return html;
+ avatar.dataset.action='v99ProfileMenu';avatar.title='Mi perfil';avatar.setAttribute('aria-label','Abrir mi perfil');avatar.setAttribute('aria-expanded',w.v99ProfileOpen?'true':'false');
+ if(u.v99ProfilePhoto)avatar.innerHTML=v99PhotoMarkup(u);
+ if(w.v99ProfileOpen){
+  const menu=document.createElement('div');menu.className='v99-profile-popover';
+  menu.innerHTML='<div class="v99-profile-intro">'+v99PhotoMarkup(u)+'<div><strong>'+esc(u.name)+'</strong><small>Encargado \u00b7 '+esc(shortSite())+'</small></div></div>'+
+  '<button class="v99-menu-action" type="button" data-action="v99ViewProfile">'+ico('user','sm')+' Ver mi perfil</button>'+
+  '<button class="v99-menu-action" type="button" data-action="v99UploadPhoto">'+ico('plus','sm')+' Actualizar foto</button>'+
+  '<input class="v99-photo-file" id="v99-photo-menu" type="file" accept="image/*" aria-label="Seleccionar foto de perfil">';
+  avatar.after(menu);
+ }
+ return wrapper.innerHTML;
+};
+function v99ProfileModal(){
+ const u=current(),photo=v99PhotoMarkup(u),roleName='Encargado de turno';
+ const fields=[['Sede asignada',site(u.primaryVenueId)?.name||'No asignada'],['Caja asignada',cashboxFor()?.name||'Sin caja asignada'],['Rol',roleName]];
+ const body='<div class="v99-profile-card">'+photo+'<div><strong>'+esc(u.name)+'</strong><small>'+roleName+'</small></div></div>'+
+  '<div class="card card-pad">'+fields.map(([k,v])=>'<div class="kv"><span>'+esc(k)+'</span><strong>'+esc(v)+'</strong></div>').join('')+'</div>'+
+  '<div style="margin-top:16px">'+actionButton('Actualizar foto','v99UploadPhoto','outline sm')+
+  (u.v99ProfilePhoto?' '+actionButton('Quitar foto','v99RemovePhoto','outline sm'):'')+'</div>'+
+  '<input class="v99-photo-file" id="v99-photo-modal" type="file" accept="image/*" aria-label="Seleccionar foto de perfil">';
+ return modalShell('PERFIL','Mi perfil',body,actionButton('Cerrar','closeModal','secondary'),'v52-detail-sheet');
+}
+// Los cambios de foto son personales; no alteran la sede, los permisos o la caja asignada.
+function v99LoadPhoto(file){
+ if(!file)return;
+ if(!String(file.type||'').startsWith('image/'))return fire('Selecciona una imagen para tu perfil.');
+ if(file.size>8*1024*1024)return fire('La foto no debe superar 8 MB.');
+ const ownerId=current().id,reader=new FileReader();
+ reader.onerror=()=>fire('No se pudo leer la imagen.');
+ reader.onload=()=>{
+  const img=new Image();img.onerror=()=>fire('La imagen no se pudo procesar.');
+  img.onload=()=>{try{
+   const size=240,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+   const ctx=canvas.getContext('2d');const side=Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height);
+   assert(ctx&&side>0,'La imagen no es v\u00e1lida.');
+   ctx.drawImage(img,((img.naturalWidth||img.width)-side)/2,((img.naturalHeight||img.height)-side)/2,side,side,0,0,size,size);
+   const owner=getUser(ownerId);if(!owner)return;
+   owner.v99ProfilePhoto=canvas.toDataURL('image/jpeg',.78);persistAll();
+   w.v99ProfileOpen=false;workerRender();fire('Foto de perfil actualizada.');
+  }catch(err){fire(err.message||'No se pudo guardar la foto.');}};
+  img.src=String(reader.result||'');
+ };
+ reader.readAsDataURL(file);
+}
+// Todas las ocupaciones se consultan una vez; las canceladas no vuelven a bloquear cancha.
+const v99InternalNames={club:'Entrenamiento Club Eleva',academia:'Actividad de Academia',evento:'Evento propio',personal:'Personal autorizado',otro:'Otra actividad'};
+const v99BlockNames={mantenimiento:'Mantenimiento',limpieza:'Limpieza',seguridad:'Cierre de seguridad',otro:'Otra restricci\u00f3n'};
+function v99UseTitle(r){return r.kind==='block'?(v99BlockNames[r.blockReason]||'Bloqueo operativo'):(v99InternalNames[r.activity]||'Uso interno');}
+function v99UseStatus(r){return ({Activo:'Interno',Pendiente:'Por autorizar',Cancelado:'Cancelada',Rechazado:'Rechazada'})[r.status]||r.status;}
+function v99UseEnd(r){const [h,m]=String(r.startTime||'00:00').split(':').map(Number),n=h*60+m+Number(r.duration||0);return String(Math.floor(n/60)%24).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
+function v99UseCard(r){
+ const dur=Number(r.duration||0),hours=Math.floor(dur/60),mins=dur%60;
+ const time=(hours?hours+' h':'')+(mins?(hours?' ':'')+mins+' min':'')||'0 min';
+ const place=(r.resourceIds||[]).map(id=>resource(id)?.name||'Cancha').join(' + ')||'Espacio';
+ const cancelled=r.status==='Cancelado',rejected=r.status==='Rechazado',blocked=r.kind==='block';
+ const label=cancelled?'Cancelada':rejected?'Rechazada':r.status==='Pendiente'?'Por autorizar':blocked?'Bloqueo':'Interno';
+ const pill=cancelled?'v99-state-cancelled':rejected?'v99-state-rejected':r.status==='Pendiente'?'wait':'muted';
+ return '<button type="button" class="v52-booking-card v95-internal-booking '+(blocked?'v95-block ':'')+(cancelled?'v99-cancelled':'')+'" data-action="v72Detail" data-id="'+esc(r.id)+'" aria-label="Abrir '+esc(r.code)+' '+esc(label)+'">'+
+  '<span class="v52-booking-time"><strong>'+esc(r.startTime)+'</strong><small>'+esc(v99UseEnd(r))+'</small></span>'+
+  '<span class="v52-booking-line"></span>'+
+  '<span class="v52-booking-main"><span class="v52-booking-code">'+esc(r.code)+'</span><span class="v52-booking-name">'+esc(v99UseTitle(r))+'</span><span class="v52-booking-info">'+esc(asDate(r.date))+' \u00b7 '+esc(place)+' \u00b7 '+esc(time)+'</span></span>'+
+  '<span class="v52-booking-pills"><span class="v52-pill '+pill+'">'+label+'</span></span></button>';
+}
+function v99StateOptions(type){
+ if(type==='commercial')return [['all','Todas'],['active','Reservadas'],['quoted','Cotizadas'],['hold','Por confirmar'],['cancelled','Canceladas']];
+ if(type==='internal'||type==='block')return [['all','Todas'],['active','Activas'],['pending','Por autorizar'],['cancelled','Canceladas'],['rejected','Rechazadas']];
+ return [['all','Todos'],['active','Activas'],['pending','Pendientes'],['cancelled','Canceladas'],['rejected','Rechazadas']];
+}
+function v99MatchesState(item,status){
+ if(status==='all')return true;
+ const s=item.r.status;
+ if(item.kind==='commercial')return (status==='active'&&s==='Confirmada')||(status==='pending'&&['Cotizada','Por confirmar'].includes(s))||(status==='quoted'&&s==='Cotizada')||(status==='hold'&&s==='Por confirmar')||(status==='cancelled'&&s==='Cancelada');
+ return (status==='active'&&s==='Activo')||(status==='pending'&&s==='Pendiente')||(status==='cancelled'&&s==='Cancelado')||(status==='rejected'&&s==='Rechazado');
+}
+function v99InternalMatches(r){
+ const search=String(w.search||'').trim().toLocaleLowerCase('es-PE');if(!search)return true;
+ const cancellation=(r.audit||[]).filter(x=>x.action?.includes('Cancelado')).map(x=>x.details||'').join(' ');
+ return [r.code,r.date,r.responsible,r.kind,r.activity,r.blockReason,v99UseTitle(r),r.reason,site(r.venueId)?.name,cancellation,...(r.resourceIds||[]).map(id=>resource(id)?.name||'')]
+  .join(' ').toLocaleLowerCase('es-PE').includes(search);
+}
+function v99ReservationList(){
+ const type=w.v99ListType||'all',status=w.v99ListStatus||'all',options=v99StateOptions(type),limit=Number(w.v99ListLimit)||60;
+ const typeOptions=[['all','Todos'],['commercial','Reservas de clientes'],['internal','Uso interno'],['block','Bloqueos']];
+ const filterBar='<div class="v99-list-filterbar">'+
+  '<label>Tipo<select data-v99-filter="type" aria-label="Filtrar tipo de reserva">'+typeOptions.map(([id,name])=>'<option value="'+id+'" '+(type===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
+  '<label>Estado<select data-v99-filter="status" aria-label="Filtrar estado de reserva">'+options.map(([id,name])=>'<option value="'+id+'" '+(status===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label></div>';
+ const commercial=(type==='all'||type==='commercial')?rentals().filter(r=>Number(r.venueId)===Number(w.siteId)&&v87CourtMatch(r)&&matches(r)).map(r=>({kind:'commercial',r,date:r.date})):[];
+ const internals=(type==='all'||type==='internal'||type==='block')?(data.v72InternalUses||[]).filter(r=>
+  Number(r.venueId)===Number(w.siteId)&&allowed(current(),r.venueId)&&(type==='all'||type==='internal'&&r.kind==='internal'||type==='block'&&r.kind==='block')&&
+  v87CourtMatch(r)&&v99InternalMatches(r)).map(r=>({kind:'internal',r,date:r.date})):[];
+ const items=[...commercial,...internals].filter(item=>v99MatchesState(item,status)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(a.r.startTime||'').localeCompare(String(b.r.startTime||'')));
+ const shown=items.slice(0,limit);
+ const rows=shown.map(item=>item.kind==='internal'?v99UseCard(item.r):eventItem({type:'rental',r:item.r,id:item.r.id,venueId:item.r.venueId,resourceId:item.r.resourceId,start:item.r.startTime,end:getSnap(item.r).endTime||item.r.endTime,title:client(item.r.customerId)?.name||'Cliente'})).join('');
+ return filterBar+'<div class="v99-list-count">'+items.length+' '+(items.length===1?'registro':'registros')+'</div>'+
+  '<div class="stack">'+(rows||'<div class="v87-results-empty">No hay registros con estos filtros.</div>')+'</div>'+
+  (items.length>shown.length?'<button type="button" class="v99-list-more" data-action="v99MoreRecords">Ver m\u00e1s registros ('+(items.length-shown.length)+' restantes)</button>':'');
+}
+const v99EarlierReservationBody=reservationBody;
+reservationBody=function(){if(!v89Desk()||w.resView!=='list')return v99EarlierReservationBody();return v99ReservationList();};
+// En detalle se muestra por separado el motivo de la cancelacion y su actor.
+function v99CancellationBox(r){
+ const entry=(r.audit||[]).slice().reverse().find(x=>String(x.action).includes('Cancelado'));
+ if(!entry)return '<div class="v99-cancel-facts"><strong>Ocupaci\u00f3n cancelada</strong><small>Este registro no ocupa la cancha.</small></div>';
+ return '<div class="v99-cancel-facts"><strong>Ocupaci\u00f3n cancelada</strong>'+
+  '<div>'+esc(entry.details||'Sin motivo registrado')+'</div><small>Cancelado por '+esc(actorName(entry.by))+' \u00b7 '+esc(new Date(entry.at).toLocaleString('es-PE'))+'</small></div>';
+}
+function v99IsInternalAudit(a){return !!(a.internal||a.internalId||/\buso\b|ocupaci[o\u00f3]n|bloqueo/i.test(String(a.action||'')));}
+function v99HistoryRows(){
+ const kind=w.v99HistoryKind||'all',search=String(w.v99HistorySearch||'').trim().toLocaleLowerCase('es-PE');
+ const all=(data.v51Audit||[]).filter(a=>allowed(current(),a.venueId||w.siteId)).filter(a=>kind==='all'||(kind==='internal'?v99IsInternalAudit(a):!v99IsInternalAudit(a))).filter(a=>[
+  a.action,actorName(a.actorId),a.reason,a.internalId,a.reservationCode,a.groupId
+ ].join(' ').toLocaleLowerCase('es-PE').includes(search));
+ const limit=Number(w.v99HistoryLimit)||70;
+ return all.slice(0,limit).map(a=>{
+  const use=a.internalId&&(data.v72InternalUses||[]).find(r=>String(r.id)===String(a.internalId)&&allowed(current(),r.venueId));
+  const tag=use?'button':'div',act=use?' data-action="v72Detail" data-id="'+esc(use.id)+'"':'';
+  return '<'+tag+' class="v99-history-item"'+act+'><strong>'+esc(a.action)+'</strong><small>'+esc(actorName(a.actorId))+' \u00b7 '+esc(new Date(a.at).toLocaleString('es-PE'))+'</small>'+(a.reason?'<small>'+esc(a.reason)+'</small>':'')+'</'+tag+'>';
+ }).join('')+(all.length>limit?'<button type="button" class="v99-list-more" data-action="v99MoreAudit">Ver m\u00e1s ('+(all.length-limit)+' restantes)</button>':'')||'<div class="empty">No hay acciones con estos filtros.</div>';
+}
+function v99HistoryModal(){
+ const body='<div class="v99-history-filters"><input id="v99-history-search" type="search" placeholder="Buscar c\u00f3digo o acci\u00f3n" aria-label="Buscar historial" value="'+esc(w.v99HistorySearch||'')+'"><select id="v99-history-kind" aria-label="Tipo de historial">'+
+  [['all','Todos'],['internal','Uso interno'],['commercial','Otras acciones']].map(([id,name])=>'<option value="'+id+'" '+((w.v99HistoryKind||'all')===id?'selected':'')+'>'+name+'</option>').join('')+'</select></div>'+
+  '<div id="v99-history-results">'+v99HistoryRows()+'</div>';
+ return modalShell('OPERACIONES','Historial',body,actionButton('Cerrar','closeModal','secondary'),'v52-detail-sheet');
+}
+const v99EarlierModalView=modalView;
+modalView=function(){
+ if(v89Desk()&&w.modal==='profile')return v99ProfileModal();
+ if(v89Desk()&&w.modal==='history')return v99HistoryModal();
+ const html=v99EarlierModalView();
+ if(v89Desk()&&w.modal==='v72Cancel'){
+  const r=(data.v72InternalUses||[]).find(x=>String(x.id)===String(w.modalId));
+  const group=r?.groupId?(data.v72InternalUses||[]).filter(x=>x.groupId===r.groupId&&['Activo','Pendiente'].includes(x.status)&&allowed(current(),x.venueId)):[];
+  if(group.length>1){
+   const wrapper=document.createElement('div');wrapper.innerHTML=html;
+   const body=wrapper.querySelector('.sheet-body');
+   const opts='<div class="v99-cancel-scope"><strong>Qu\u00e9 deseas cancelar</strong>'+
+    '<label><input type="radio" name="v99CancelScope" value="one" id="v99-cancel-one" checked>Solo esta fecha ('+esc(asDate(r.date))+')</label>'+
+    '<label><input type="radio" name="v99CancelScope" value="all" id="v99-cancel-all">Toda la programaci\u00f3n ('+group.length+' fechas)</label></div>';
+   if(body)body.insertAdjacentHTML('afterbegin',opts);
+   return wrapper.innerHTML;
+  }
+ }
+ if(v89Desk()&&w.modal==='v72Detail'){
+  const r=(data.v72InternalUses||[]).find(x=>String(x.id)===String(w.modalId));
+  if(r?.status==='Cancelado'){
+   const wrapper=document.createElement('div');wrapper.innerHTML=html;
+   const body=wrapper.querySelector('.sheet-body');if(body)body.insertAdjacentHTML('afterbegin',v99CancellationBox(r));
+   return wrapper.innerHTML;
+  }
+ }
+ return html;
+};
+const v99EarlierWorkerRender=workerRender;
+workerRender=function(...args){
+ const result=v99EarlierWorkerRender(...args);
+ if(shadow&&!shadow.getElementById('v99-ui-style')){
+  const st=document.createElement('style');st.id='v99-ui-style';st.textContent=V99_CSS;shadow.appendChild(st);
+ }
+ if(shadow&&w.v99ProfileOpen){
+  const top=shadow.querySelector('.main-col');
+  if(top&&!top.querySelector('.v99-profile-scrim')){
+   const cover=document.createElement('button');cover.className='v99-profile-scrim';cover.type='button';cover.dataset.action='v99ProfileClose';cover.setAttribute('aria-label','Cerrar men\u00fa de perfil');top.prepend(cover);
+  }
+ }
+ return result;
+};
+const v99EarlierOnWorkClick=onWorkClick;
+onWorkClick=function(e){
+ const b=e.target?.closest?.('[data-action]');
+ const action=b?.dataset.action||'';
+ if(action.startsWith('v99')){
+  e.preventDefault();e.stopPropagation();
+  try{
+   if(action==='v99ProfileMenu'){w.v99ProfileOpen=!w.v99ProfileOpen;workerRender();return;}
+   if(action==='v99ProfileClose'){w.v99ProfileOpen=false;workerRender();return;}
+   if(action==='v99ViewProfile'){w.v99ProfileOpen=false;openWorkerModal('profile');return;}
+   if(action==='v99UploadPhoto'){const input=shadow.querySelector(w.modal==='profile'?'#v99-photo-modal':'#v99-photo-menu');input?.click();return;}
+   if(action==='v99RemovePhoto'){delete current().v99ProfilePhoto;persistAll();workerRender();fire('Foto de perfil retirada.');return;}
+   if(action==='v99MoreRecords'){w.v99ListLimit=(Number(w.v99ListLimit)||60)+60;workerRender();return;}
+   if(action==='v99MoreAudit'){w.v99HistoryLimit=(Number(w.v99HistoryLimit)||70)+70;workerRender();return;}
+  }catch(err){console.error('[Eleva accesos]',err);fire(err.message||'No se pudo completar la acci\u00f3n.');}
+  return;
+ }
+ if(w.v99ProfileOpen){w.v99ProfileOpen=false;}
+ return v99EarlierOnWorkClick(e);
+};
+const v99EarlierOnWorkChange=onWorkChange;
+onWorkChange=function(e){
+ if(e.target?.matches?.('.v99-photo-file')){const file=e.target.files?.[0];e.target.value='';v99LoadPhoto(file);return;}
+ if(e.target?.matches?.('[data-v99-filter]')){
+  const k=e.target.dataset.v99Filter;
+  if(k==='type'){w.v99ListType=e.target.value;w.v99ListStatus='all';}
+  if(k==='status')w.v99ListStatus=e.target.value;
+  w.v99ListLimit=60;workerRender();return;
+ }
+ if(e.target?.id==='v99-history-kind'){
+  w.v99HistoryKind=e.target.value;w.v99HistoryLimit=70;
+  const el=q('v99-history-results');if(el)el.innerHTML=v99HistoryRows();return;
+ }
+ return v99EarlierOnWorkChange(e);
+};
+const v99EarlierOnWorkInput=onWorkInput;
+onWorkInput=function(e){
+ if(e.target?.id==='v99-history-search'){
+  w.v99HistorySearch=e.target.value;w.v99HistoryLimit=70;
+  const el=q('v99-history-results');if(el)el.innerHTML=v99HistoryRows();return;
+ }
+ return v99EarlierOnWorkInput(e);
+};
+window.ElevaInternasHistorial={
+ count:()=>data.v72InternalUses?.length||0,
+ cancelled:()=>data.v72InternalUses?.filter(x=>x.status==='Cancelado').length||0,
+ filterState:()=>({type:w.v99ListType||'all',status:w.v99ListStatus||'all'})
+};
+
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
 })();
