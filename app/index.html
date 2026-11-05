@@ -18849,6 +18849,368 @@ v83RefreshAgenda=function(){if(!shadow||w.page!=='reservations'||w.modal)return;
 window.ElevaBenefitAgenda={offers:v54Offers,eligible:v54Eligible,preview:v54Preview,card:v86FinancePill};
 if(window.V54)window.V54.offers=v54Offers;
 
+
+/* Refinamiento de Reservas y experiencia móvil: conservar las operaciones y reducir pasos visuales. */
+const V87_CSS=`
+.v87-reservations{width:100%;min-width:0;max-width:100%;}
+.v87-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px}
+.v87-head h1{margin:0;color:#12232d;font-weight:800;font-size:29px;line-height:1.1;letter-spacing:-.045em}
+.v87-eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#48bc67;font-weight:800;margin-bottom:7px}
+.v87-open-calendar{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:45px;height:45px;color:#12232d;background:#fff;border:1px solid #dbe4e1;border-radius:13px;cursor:pointer}
+.v87-open-calendar .i{width:23px;height:23px}
+.v87-search-row{margin:0 0 14px}.v87-search-row .field-search{width:100%;min-width:0;margin:0;height:45px}
+.v87-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin:0 0 14px}
+.v87-filter{display:flex;flex-direction:column;gap:6px;min-width:0}
+.v87-filter label{font-size:11px;font-weight:750;color:#536970}
+.v87-filter select{appearance:auto;min-width:0;width:100%;height:42px;padding:0 12px;background:white;color:#12232d;border-radius:12px;border:1px solid #dce5e2;font-weight:650;font-size:13px}
+.v87-tabs{margin-bottom:18px!important}
+.v87-date-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+.v87-date-main{min-width:0;flex:1}
+.v87-date-title{font-size:19px;line-height:1.25;color:#12232d;font-weight:800;letter-spacing:-.025em}
+.v87-date-sub{color:#6f8289;font-size:11px;margin-top:4px}
+.v87-today{height:37px;border:1px solid #dce6e2;border-radius:11px;background:white;color:#12232d;padding:0 14px;font-size:12px;font-weight:800;flex-shrink:0;cursor:pointer}
+.v87-day-scroll{display:flex;align-items:stretch;gap:8px;width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding:2px 2px 9px;margin-bottom:5px}
+.v87-day-scroll::-webkit-scrollbar{display:none}
+.v87-day-chip{flex:0 0 73px;min-width:0;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1px solid #dce5e2;background:white;border-radius:13px;color:#455962;scroll-snap-align:center;cursor:pointer}
+.v87-day-chip.active{color:#fff;background:#12232d;border-color:#12232d}
+.v87-day-chip.today:not(.active){border-color:#9acfa9}
+.v87-day-chip .v87-day-word{font-size:11px;font-weight:680;text-transform:capitalize}
+.v87-day-chip strong{font-size:19px;font-weight:800;line-height:1}
+.v87-day-chip .v87-day-month{font-size:10px;font-weight:650;text-transform:capitalize}
+.v87-reservation-stack{margin-top:13px}
+.v87-results-empty{border:1px dashed #d3e1dd;background:#fff;border-radius:17px;text-align:center;color:#71848a;padding:32px 15px;font-size:12px}
+.v87-results-empty .i{width:24px;height:24px;margin:0 auto 9px;color:#a1b5af}
+.v87-calendar-backdrop{position:fixed;inset:0;z-index:90;background:rgba(10,26,35,.44);display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto}
+.v87-calendar-dialog{background:#fff;border-radius:20px;width:min(570px,100%);max-height:min(92dvh,770px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 22px 80px rgba(0,0,0,.16);color:#12232d}
+.v87-calendar-head{padding:17px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #e5ecea}
+.v87-calendar-head strong{font-size:17px;letter-spacing:-.025em}
+.v87-calendar-small{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:#4d9868;font-weight:800}
+.v87-calendar-icon{display:grid;place-items:center;width:35px;height:35px;border:1px solid #dce6e1;border-radius:10px;background:#fff;color:#12232d;cursor:pointer}
+.v87-calendar-body{padding:13px 16px 16px;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.v87-month-nav{display:flex;align-items:center;justify-content:space-between;gap:7px;margin:0 0 14px}
+.v87-month-nav strong{font-size:15px;text-transform:capitalize;text-align:center}
+.v87-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.v87-weekday{font-size:10px;font-weight:800;text-align:center;color:#788990;padding:4px 0 9px}
+.v87-cal-day{position:relative;min-width:0;min-height:57px;border:1px solid #edf1ef;border-radius:9px;background:#fff;color:#12232d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+.v87-cal-day.outside{color:#a7b5ba;background:#f9fbfa}
+.v87-cal-day.selected{background:#12232d;border-color:#12232d;color:white}
+.v87-cal-day.today:not(.selected){outline:1px solid #79c99a}
+.v87-cal-day b{font-size:13px;font-weight:800}
+.v87-cal-day em{font-size:9px;font-style:normal;font-weight:750;color:#2e965a;white-space:nowrap}
+.v87-cal-day.selected em{color:#a8ffbf}
+.v87-calendar-foot{display:flex;justify-content:space-between;gap:10px;padding:13px 16px calc(13px + env(safe-area-inset-bottom,0px));border-top:1px solid #e5ecea;background:#fff}
+.v87-calendar-foot button{font-size:12px;min-height:41px;border-radius:11px;border:1px solid #dce5e1;background:#f2f5f4;color:#12232d;font-weight:800;padding:9px 14px;cursor:pointer}
+.v87-calendar-foot .primary{background:#12232d;color:#fff;border-color:#12232d}
+#v51-worker-app,.page-area{min-width:0;max-width:100%}
+@media(min-width:750px){.v87-day-chip{flex-basis:86px}.v87-reservations .v87-date-head{margin-top:3px}.v87-date-title{font-size:22px}}
+@media(max-width:650px){
+ .v87-reservations{width:100%}
+ .v87-head{margin-bottom:16px}.v87-head h1{font-size:28px}
+ .v87-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .v87-filter select{height:41px}
+ .v87-tabs{margin-bottom:17px!important}
+ .v87-date-title{font-size:17px}
+ .v87-day-chip{flex:0 0 calc((100% - 28px) / 5);min-width:63px;min-height:74px}
+ .v87-day-scroll{gap:7px}
+ .v87-calendar-backdrop{align-items:flex-end;padding:0}
+ .v87-calendar-dialog{width:100%;max-height:calc(100dvh - 10px);border-radius:20px 20px 0 0}
+ .v87-cal-day{min-height:52px}
+ /* Input fonts >=16px stop Safari's automatic focus zoom without disabling pinch zoom. */
+ input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),select,textarea,
+ .v87-reservations .v87-filter select,.v85-date-picker input{font-size:16px!important;line-height:1.25;min-width:0;max-width:100%;}
+ .field-search input{font-size:16px!important}
+ .sheet,.sheet-body,.sheet-foot,.card,.form-section,.formgrid{min-width:0;max-width:100%;box-sizing:border-box}
+ .sheet{max-width:100vw!important;max-height:100dvh!important}
+ .sheet-body{overflow-x:hidden;scroll-padding-bottom:110px}
+ .sheet-foot{position:sticky;bottom:0;z-index:2;background:white;min-width:0;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+ #v51-worker-app{overflow-x:clip;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+ .page-area{padding-bottom:35px}
+}
+@media(max-width:370px){.v87-head h1{font-size:26px}.v87-day-chip{flex-basis:calc((100% - 20px) / 5);min-width:57px}.v87-day-scroll{gap:5px}.v87-calendar-body{padding:10px 8px}.v87-cal-day{min-height:45px}}
+`;
+const v87DocCSS=`
+@media(max-width:767px){
+ html,body{max-width:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+ #content input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+ #content select,#content textarea,
+ #overlay input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+ #overlay select,#overlay textarea,
+ #drawer input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+ #drawer select,#drawer textarea{font-size:16px!important;max-width:100%;min-width:0;}
+ #content .field,#overlay .field,#drawer .field,#content .formgrid,#overlay .formgrid,#drawer .formgrid{min-width:0;max-width:100%;}
+ #content .card,#overlay .card,#drawer .card{max-width:100%;min-width:0;box-sizing:border-box;}
+ #content,#overlay,#drawer{max-width:100%;}
+ body:not(.v51-workspace) input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+ body:not(.v51-workspace) select,body:not(.v51-workspace) textarea{font-size:16px!important;min-width:0;max-width:100%;}
+ #overlay input[type=date],#overlay input[type=time],#overlay input[type=number]{width:100%;min-width:0;}
+ .v75-worker-group,.v76-section,.v73-modal,.modalbox{max-width:100%;min-width:0;box-sizing:border-box;}
+}
+`;
+const v87AdminStyle=document.createElement('style');v87AdminStyle.id='eleva-mobile-fields';v87AdminStyle.textContent=v87DocCSS;document.head.appendChild(v87AdminStyle);
+// These are view-only filters. They must never modify the data or its saved price rules.
+function v87CourtOptions(){return (data.resources||[]).filter(x=>Number(x.venueId)===Number(w.siteId)&&valid(x)&&!/combinaci|completa/i.test(String(x.type||''))&&!/(?:cancha|sede)\s+completa|combinaci[oó]n/i.test(String(x.name||''))).sort((a,b)=>String(a.name).localeCompare(String(b.name),'es'));}
+function v87CourtMatch(x){const id=String(w.v87CourtId||'');if(!id)return true;
+ const r=x?.r||x;if(!r)return false;
+ const raw=Array.isArray(r.resourceIds)&&r.resourceIds.length?r.resourceIds:[r.resourceId];let ids=raw.map(String);
+ try{const physical=window.V27?.resolveSpace?.(raw.map(Number),r.venueId);if(physical?.ok&&Array.isArray(physical.ids))ids=ids.concat(physical.ids.map(String));}catch(e){}
+ const sn=typeof getSnap==='function'?getSnap(r):null;
+ if(Array.isArray(sn?.resourceIds))ids=ids.concat(sn.resourceIds.map(String));
+ return ids.includes(id);
+}
+const v87BaseMatches=matches;
+matches=function(r){if(!w.search)return true;const base=v87BaseMatches(r);if(base)return true;const cl=client(r.customerId);const rec=typeof v84ReceiptForRental==='function'?v84ReceiptForRental(r):null;return [cl?.phone,cl?.documentNumber,rec?.code,r.v84ReceiptId].filter(Boolean).join(' ').toLocaleLowerCase('es').includes(w.search.toLocaleLowerCase('es'));};
+function v87DateTitle(iso){const f=new Intl.DateTimeFormat('es-PE',{weekday:'long',day:'numeric',month:'long'}).format(new Date(iso+'T12:00:00'));return f.slice(0,1).toUpperCase()+f.slice(1);}
+function v87Month(iso,opts){return new Intl.DateTimeFormat('es-PE',{month:opts?'short':'long'}).format(new Date(iso+'T12:00:00')).replace('.','');}
+function v87ActiveDay(){return (w.date&&/^\d{4}-\d\d-\d\d$/.test(w.date))?w.date:day();}
+function v87Daily(){return todays().filter(x=>v87CourtMatch(x)&&(x.type==='academic'||matches(x.r)));}
+function v87DayInfo(){const all=v87Daily(),reservations=all.filter(x=>x.type==='rental').length;const label=reservations+' '+(reservations===1?'reserva':'reservas');return label+(all.length!==reservations?' · '+all.length+' ocupaciones':'');}
+function v87SiteFilters(){const allowedSites=sites();const multi=allowedSites.length>1;const cs=v87CourtOptions();if(!multi&&cs.length<=1)return '';
+ let html='<div class="v87-filters">';
+ if(multi)html+='<div class="v87-filter"><label for="v87-site">Sede</label><select id="v87-site" data-v87-change="site" aria-label="Filtrar sede">'+allowedSites.map(s=>'<option value="'+esc(s.id)+'" '+(Number(s.id)===Number(w.siteId)?'selected':'')+'>'+esc(s.name)+'</option>').join('')+'</select></div>';
+ if(cs.length>1)html+='<div class="v87-filter"><label for="v87-court">Cancha física</label><select id="v87-court" data-v87-change="court" aria-label="Filtrar cancha"><option value="">Todas las canchas</option>'+cs.map(c=>'<option value="'+esc(c.id)+'" '+(String(c.id)===String(w.v87CourtId)?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div>';
+ return html+'</div>';
+}
+// Horizontal date rail: five readable days on iPhone, more on desktop.
+dateSelector=function(){const selected=v87ActiveDay();const dates=Array.from({length:15},(_,i)=>dayPlus(selected,i-7));const strip=dates.map(d=>{
+ const obj=new Date(d+'T12:00:00');const wd=new Intl.DateTimeFormat('es-PE',{weekday:'short'}).format(obj).replace('.','');
+ return '<button type="button" class="v87-day-chip '+(d===selected?'active ':'')+(d===day()?'today':'')+'" data-action="day" data-date="'+d+'" aria-label="'+esc(asDate(d))+'" aria-pressed="'+(d===selected?'true':'false')+'"><span class="v87-day-word">'+esc(wd)+'</span><strong>'+Number(d.slice(-2))+'</strong><span class="v87-day-month">'+esc(v87Month(d,true))+'</span></button>';
+ }).join('');return '<div class="v87-date-head"><div class="v87-date-main"><div class="v87-date-title">'+esc(v87DateTitle(selected))+'</div><div class="v87-date-sub">'+esc(v87DayInfo())+'</div></div><button type="button" data-v87="today" class="v87-today" aria-label="Volver al día de hoy">Hoy</button></div><div class="v87-day-scroll" aria-label="Elegir día">'+strip+'</div>';};
+// Retain the three real views; on agenda omit the redundant date counter.
+const v87OldBody=reservationBody;
+reservationBody=function(){if(w.resView==='agenda'){
+ const arr=v87Daily();return '<div class="v87-reservation-stack stack">'+(arr.length?arr.map(eventItem).join(''):'<div class="v87-results-empty">'+ico('calendar')+(w.search?'No hay coincidencias para esta fecha.':'No hay reservas para este día.')+'</div>')+'</div>';
+ }
+ if(w.resView==='list'){
+ const options=[['all','Todas'],['Cotizada','Cotizadas'],['Por confirmar','Por confirmar'],['Confirmada','Reservadas'],['Cancelada','Canceladas']];
+ const rows=rentals().filter(r=>Number(r.venueId)===Number(w.siteId)&&(w.filter==='all'||r.status===w.filter)&&v87CourtMatch(r)&&matches(r));
+ return '<div class="pills" style="margin:14px 0">'+options.map(([id,label])=>'<button class="pill '+(w.filter===id?'active':'')+'" data-action="resFilter" data-value="'+id+'">'+label+'</button>').join('')+'</div><div class="stack">'+(rows.map(r=>eventItem({type:'rental',r,id:r.id,venueId:r.venueId,resourceId:r.resourceId,start:r.startTime,end:getSnap(r).endTime,title:client(r.customerId)?.name||'Cliente'})).join('')||'<div class="v87-results-empty">No hay reservas con estos filtros.</div>')+'</div>';
+ }
+ return v87OldBody();};
+const v87OldCourtGrid=courtGrid;
+courtGrid=function(){if(!w.v87CourtId)return v87OldCourtGrid();const cs=v87CourtOptions().filter(c=>String(c.id)===String(w.v87CourtId));if(!cs.length)return '<div class="v87-results-empty">Esta cancha no está disponible.</div>';const court=cs[0];const slots=[];
+ for(let hr=7;hr<24;hr++){const st=String(hr).padStart(2,'0')+':00',et=String(hr+1).padStart(2,'0')+':00';const ev=todays().filter(x=>v87CourtMatch(x)).find(x=>x.start<et&&x.end>st);
+ slots.push('<div class="hour-label">'+st+'</div><div class="court-slot">'+(ev?'<button class="slot-booking '+(ev.type==='academic'?'amber':'')+'" '+(ev.type==='rental'?'data-action="detail" data-id="'+ev.id+'"':'')+'>'+esc(ev.title)+'<br><small>'+esc(ev.start)+'–'+esc(ev.end)+'</small></button>':'<button class="slot-empty" data-action="newAt" data-resource="'+court.id+'" data-time="'+st+'" aria-label="Reservar cancha a las '+st+'">+</button>')+'</div>');}
+ return '<div class="court-timeline-wrap"><div class="court-table" style="grid-template-columns:55px minmax(200px,1fr);min-width:300px"><div class="court-h">Hora</div><div class="court-h">'+esc(court.name)+'</div>'+slots.join('')+'</div></div>';
+};
+reservations=function(){const types=[['agenda','Agenda'],['courts','Canchas'],['list','Lista']];
+ return '<section class="v87-reservations"><div class="v87-head"><div><div class="v87-eyebrow">'+esc(shortSite())+'</div><h1>Reservas</h1></div><button type="button" class="v87-open-calendar" data-v87="openCalendar" title="Abrir calendario mensual" aria-label="Abrir calendario mensual">'+ico('calendar')+'</button></div>'+
+ '<div class="v87-search-row"><div class="field-search">'+ico('search','sm')+'<input id="v51-search" type="search" placeholder="Buscar cliente, código o cancha" value="'+esc(w.search)+'" aria-label="Buscar reservas" autocomplete="off"></div></div>'+v87SiteFilters()+
+ '<div class="segmented v87-tabs" style="--n:3" role="group" aria-label="Vista de reservas">'+types.map(([k,n])=>'<button type="button" class="'+(w.resView===k?'active':'')+'" data-action="resView" data-view="'+k+'" aria-pressed="'+(w.resView===k)+'">'+n+'</button>').join('')+'</div>'+
+ (w.resView!=='list'?dateSelector():'')+'<div id="v51-results">'+reservationBody()+'</div></section>';
+};
+function v87ToIso(date){return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');}
+function v87MonthShift(month,delta){const [y,m]=String(month).split('-').map(Number);const t=new Date(y,m-1+delta,1,12);return [t.getFullYear(),String(t.getMonth()+1).padStart(2,'0')].join('-');}
+function v87CalendarHTML(){const selected=v87ActiveDay(),month=/^\d{4}-\d{2}$/.test(w.v87Month||'')?w.v87Month:selected.slice(0,7);const [y,m]=month.split('-').map(Number);const first=new Date(y,m-1,1,12);const offset=(first.getDay()+6)%7;const daysInMonth=new Date(y,m,0,12).getDate();const cells=Math.ceil((offset+daysInMonth)/7)*7;
+ const rentalCounts={};rentals(current(),false).filter(r=>Number(r.venueId)===Number(w.siteId)&&v87CourtMatch(r)).forEach(r=>{rentalCounts[r.date]=(rentalCounts[r.date]||0)+1;});
+ let body=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>'<div class="v87-weekday">'+d+'</div>').join('');
+ for(let i=0;i<cells;i++){const d=new Date(y,m-1,1-offset+i,12);const iso=v87ToIso(d),n=rentalCounts[iso]||0;
+ body+='<button type="button" class="v87-cal-day '+(iso.slice(0,7)!==month?'outside ':'')+(iso===selected?'selected ':'')+(iso===day()?'today':'')+'" data-v87="calendarDay" data-date="'+iso+'" aria-label="'+esc(asDate(iso))+(n?' · '+n+' reservas':'')+'"><b>'+d.getDate()+'</b>'+(n?'<em>● '+n+'</em>':'')+'</button>';
+ }
+ const monthTitle=new Intl.DateTimeFormat('es-PE',{month:'long',year:'numeric'}).format(first);
+ return '<div class="v87-calendar-backdrop" data-v87="calendarBackdrop"><section role="dialog" aria-modal="true" aria-label="Seleccionar fecha" class="v87-calendar-dialog"><div class="v87-calendar-head"><div><span class="v87-calendar-small">Reservas</span><br><strong>Calendario</strong></div><button type="button" class="v87-calendar-icon" data-v87="closeCalendar" aria-label="Cerrar calendario">'+ico('close')+'</button></div><div class="v87-calendar-body"><div class="v87-month-nav"><button type="button" class="v87-calendar-icon" data-v87="monthPrev" aria-label="Mes anterior">'+ico('left')+'</button><strong>'+esc(monthTitle)+'</strong><button type="button" class="v87-calendar-icon" data-v87="monthNext" aria-label="Mes siguiente">'+ico('chevron')+'</button></div><div class="v87-month-grid">'+body+'</div></div><div class="v87-calendar-foot"><button type="button" data-v87="calendarToday">Hoy</button><button type="button" class="primary" data-v87="closeCalendar">Volver a la agenda</button></div></section></div>';
+}
+const v87PreviousRender=workerRender;
+workerRender=function(){v87PreviousRender();if(!shadow)return; if(!shadow.getElementById('eleva-reservas-mobile')){const style=document.createElement('style');style.id='eleva-reservas-mobile';style.textContent=V87_CSS;shadow.prepend(style);}
+ const root=shadow.getElementById('v51-worker-app');if(!root)return;
+ const old=shadow.querySelector('.v87-calendar-backdrop');if(old)old.remove();
+ if(w.v87CalendarOpen&&w.page==='reservations')root.insertAdjacentHTML('beforeend',v87CalendarHTML());
+ const strip=shadow.querySelector('.v87-day-scroll');if(strip){const active=strip.querySelector('.active');if(active)strip.scrollLeft=Math.max(0,active.offsetLeft-(strip.clientWidth-active.clientWidth)/2);}
+};
+const v87PriorClick=onWorkClick;
+onWorkClick=function(e){const t=e.target.closest?.('[data-v87]');if(t){const a=t.dataset.v87;e.preventDefault();e.stopPropagation();
+ if(a==='openCalendar'){w.v87Month=v87ActiveDay().slice(0,7);w.v87CalendarOpen=true;}
+ else if(a==='closeCalendar'){w.v87CalendarOpen=false;}
+ else if(a==='calendarBackdrop'){if(e.target!==t)return;w.v87CalendarOpen=false;}
+ else if(a==='monthPrev'||a==='monthNext'){w.v87Month=v87MonthShift(w.v87Month||v87ActiveDay().slice(0,7),a==='monthPrev'?-1:1);}
+ else if(a==='calendarToday'){w.date=day();w.v87Month=day().slice(0,7);w.v87CalendarOpen=false;}
+ else if(a==='calendarDay'){w.date=t.dataset.date;w.v87Month=w.date.slice(0,7);w.v87CalendarOpen=false;}
+ else if(a==='today'){w.date=day();}
+ workerRender();return;
+ }
+ if(e.target.closest?.('[data-action="page"]')||e.target.closest?.('[data-action="goRes"]'))w.v87CalendarOpen=false;
+ return v87PriorClick(e);
+};
+const v87PriorChange=onWorkChange;
+onWorkChange=function(e){const t=e.target;if(t?.dataset?.v87Change){if(t.dataset.v87Change==='site'){w.siteId=Number(t.value);w.v87CourtId='';w.draft=null;}else if(t.dataset.v87Change==='court'){w.v87CourtId=t.value;}w.v87CalendarOpen=false;workerRender();return;}
+ if(t?.dataset?.change==='site')w.v87CourtId='';return v87PriorChange(e);};
+// Escape closes the calendar without changing the selected date or invoking another modal.
+const v87PreviousMount=mount;
+mount=function(){v87PreviousMount();if(shadow&&!shadow.__v87Escape){shadow.__v87Escape=true;shadow.addEventListener('keydown',function(e){if(e.key==='Escape'&&w.v87CalendarOpen){e.stopPropagation();w.v87CalendarOpen=false;workerRender();}});}};
+const v87PreviousInput=onWorkInput;
+onWorkInput=function(e){v87PreviousInput(e);if(e.target?.id==='v51-search'){const count=shadow?.querySelector('.v87-date-sub');if(count)count.textContent=v87DayInfo();}};
+window.ElevaReservationsUX={openCalendar:()=>{w.page='reservations';w.v87Month=v87ActiveDay().slice(0,7);w.v87CalendarOpen=true;workerRender();},date:()=>w.date,views:()=>w.resView};
+
+
+/* ELEVA SPORT | Correcciones transversales de navegacion y documentos.
+   Los identificadores, pagos, tarifas y datos permanecen intactos. */
+const V88_WORKER_CSS=`
+:host{scroll-behavior:auto!important}
+#v51-worker-app .sheet, #v51-worker-app .sheet-body,#v51-worker-app .sheet-foot{min-width:0;box-sizing:border-box}
+#v51-worker-app .overlay{overscroll-behavior:contain}
+#v51-worker-app .sheet{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#v51-worker-app .sheet-head,#v51-worker-app .sheet-foot{flex:0 0 auto;min-width:0}
+#v51-worker-app .sheet-body{flex:1 1 auto;min-height:0;max-width:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;overflow-anchor:auto;-webkit-overflow-scrolling:touch}
+#v51-worker-app .sheet-foot{position:relative!important;bottom:auto!important;z-index:3}
+#v51-worker-app .fields .two,#v51-worker-app .v84-split-grid{grid-template-columns:repeat(2,minmax(0,1fr));min-width:0;max-width:100%}
+#v51-worker-app .field,#v51-worker-app .fields .two >*,#v51-worker-app .sheet-body .formgrid >*{min-width:0;max-width:100%}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"]),
+#v51-worker-app input:is([type="number"],[type="text"]){min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"])::-webkit-date-and-time-value{text-align:left;min-width:0;line-height:1.3}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"])::-webkit-datetime-edit{min-width:0;padding:0;white-space:nowrap;line-height:1.3}
+#v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"])::-webkit-calendar-picker-indicator{flex-shrink:0;margin-inline-start:auto}
+@media(max-width:767px){
+ :host{overscroll-behavior-y:contain;overflow-x:hidden}
+ #v51-worker-app .overlay{height:100dvh;max-height:100dvh;overflow:hidden;align-items:flex-end}
+ #v51-worker-app .sheet{width:100%;max-width:100vw;max-height:calc(100dvh - 6px)!important;min-height:0;margin:0;border-radius:22px 22px 0 0}
+ #v51-worker-app .sheet-body{min-height:0;overscroll-behavior-y:contain;scroll-padding-bottom:20px}
+ #v51-worker-app .sheet-head{padding-top:22px}
+ #v51-worker-app .sheet-foot{padding-bottom:max(12px,env(safe-area-inset-bottom,0px));position:relative!important}
+ #v51-worker-app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+ #v51-worker-app select,#v51-worker-app textarea{font-size:16px!important;line-height:1.3;min-width:0;max-width:100%;box-sizing:border-box}
+ #v51-worker-app input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"]){display:block;height:46px;min-height:46px;padding:10px 12px;text-align:left;appearance:auto;-webkit-appearance:auto}
+ #v51-worker-app .fields .two{gap:10px}
+ #v51-worker-app .v58-tabs{scroll-margin-top:10px}
+}
+@media(max-width:350px){#v51-worker-app .fields .two{gap:8px}#v51-worker-app input:is([type="date"],[type="time"]){padding-inline:8px}}
+`;
+const v88AdminCss=document.createElement('style');
+v88AdminCss.id='eleva-movil-formularios-fijos';
+v88AdminCss.textContent=`
+@media(max-width:767px){
+ #overlay .modalbg{overflow:hidden;overscroll-behavior:contain;height:100dvh}
+ #overlay .modal{max-width:100vw;width:100%;max-height:calc(100dvh - 6px);min-width:0;overscroll-behavior-y:contain;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box}
+ #overlay .formgrid{grid-template-columns:minmax(0,1fr);gap:10px}
+ #overlay .formgrid:has(input[type="date"]):has(input[type="time"]){grid-template-columns:repeat(2,minmax(0,1fr))}
+ #overlay .field,#overlay .formgrid >*,#overlay .v76-grid>*{min-width:0;max-width:100%;box-sizing:border-box}
+ #overlay input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+ #overlay select,#overlay textarea{font-size:16px!important;line-height:1.3;box-sizing:border-box;max-width:100%;min-width:0}
+ #overlay input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"]){width:100%;height:46px;min-height:46px;padding:10px 12px;display:block;text-align:left}
+ #overlay input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"])::-webkit-date-and-time-value{text-align:left;min-width:0}
+ #overlay input:is([type="date"],[type="time"],[type="month"],[type="datetime-local"])::-webkit-datetime-edit{min-width:0;padding:0}
+ #overlay .formfoot{position:sticky;bottom:0;z-index:3;background:white;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:370px){#overlay .formgrid:has(input[type="date"]):has(input[type="time"]){grid-template-columns:minmax(0,1fr)}}
+`;
+document.head.appendChild(v88AdminCss);
+// Preserva el scroll en los renderizados del perfil Encargado, que reconstruyen el contenido.
+const v88ModalMemory=new Map();
+const v88PrevWorkerRender=workerRender;
+workerRender=function(){
+ const host=shadow?.host,oldOverlay=shadow?.getElementById('v51-overlay');
+ const oldModalKey=oldOverlay?.dataset.v88Key||'';
+ const oldPage=shadow?.getElementById('v51-worker-app')?.dataset.v88Page||'';
+ const previousHostTop=host?.scrollTop||0;
+ const previousPage=shadow?.getElementById('v51-page');
+ const previousPageTop=previousPage?.scrollTop||0;
+ const previousBody=oldOverlay?.querySelector('.sheet-body');
+ const previousY=previousBody?.scrollTop||0;
+ const oldTabScroll=oldOverlay?.querySelector('.v58-tabs')?.scrollLeft||0;
+ if(oldModalKey&&previousBody)v88ModalMemory.set(oldModalKey,{y:previousY,tabX:oldTabScroll});
+ const oldFocused=shadow?.activeElement;
+ const focusId=oldFocused?.id||'';
+ const focusType=oldFocused?.getAttribute('type')||'';
+ const focusedOnText=focusId&&oldFocused?.matches('input[type=text],input[type=search],input[type=number],textarea');
+ let focusSelection=null;
+ if(focusedOnText&&focusType!=='number'){try{focusSelection=[oldFocused.selectionStart,oldFocused.selectionEnd]}catch(e){}}
+ v88PrevWorkerRender();
+ if(!shadow)return;
+ if(!shadow.getElementById('eleva-scroll-date-pdf-stability')){
+   const style=document.createElement('style');style.id='eleva-scroll-date-pdf-stability';style.textContent=V88_WORKER_CSS;shadow.appendChild(style);
+ }
+ const root=shadow.getElementById('v51-worker-app');if(root)root.dataset.v88Page=String(w.page||'');
+ const newOverlay=shadow.getElementById('v51-overlay');
+ const newKey=w.modal?String(w.modal)+'|'+String(w.modalId??''):'';
+ if(newOverlay)newOverlay.dataset.v88Key=newKey;
+ if(!newKey&&oldModalKey)v88ModalMemory.clear();
+ if(host&&oldPage===String(w.page||''))host.scrollTop=previousHostTop;
+ const currentPage=shadow.getElementById('v51-page');
+ if(currentPage&&oldPage===String(w.page||''))currentPage.scrollTop=previousPageTop;
+ if(newOverlay){
+   const body=newOverlay.querySelector('.sheet-body');
+   const restored=oldModalKey===newKey?{y:previousY,tabX:oldTabScroll}:v88ModalMemory.get(newKey);
+   if(body&&restored){body.scrollTop=restored.y;
+    const tabs=newOverlay.querySelector('.v58-tabs');if(tabs)tabs.scrollLeft=restored.tabX||0;
+   }
+   if(focusedOnText&&oldModalKey===newKey){const next=shadow.getElementById(focusId);
+    if(next&&next.matches('input[type=text],input[type=search],input[type=number],textarea')){
+     try{next.focus({preventScroll:true});if(focusSelection&&next.setSelectionRange)next.setSelectionRange(...focusSelection)}catch(e){}
+    }
+   }
+ }
+};
+// Cambio de pestana dentro del perfil de cliente sin reconstruir ni remontar toda la ventana.
+const v88PrevWorkClick=onWorkClick;
+onWorkClick=function(e){
+ const button=e.target?.closest?.('[data-action="v58Tab"]');
+ if(button&&w.modal==='client'){
+  e.preventDefault();e.stopPropagation();
+  const scroller=shadow?.querySelector('#v51-overlay .sheet-body');
+  const tabs=scroller?.querySelector('.v58-tabs');
+  const target=button.dataset.tab;
+  if(!tabs||!['reservations','payments','benefits','data'].includes(target))return;
+  if(w.v58Tab===target)return;
+  w.v58Tab=target;w.v68ActivityMax=12;w.v68PaymentMax=15;
+  const container=document.createElement('div');container.innerHTML=clientDetailModal();
+  const nextTabs=container.querySelector('.sheet-body .v58-tabs');
+  if(!nextTabs){workerRender();return;}
+  const priorY=scroller.scrollTop,priorTabsX=tabs.scrollLeft;
+  tabs.querySelectorAll('button[data-tab]').forEach(el=>{
+   el.classList.toggle('active',el.dataset.tab===target);
+   el.setAttribute('aria-selected',String(el.dataset.tab===target));
+  });
+  while(tabs.nextSibling)tabs.nextSibling.remove();
+  while(nextTabs.nextSibling)scroller.appendChild(nextTabs.nextSibling);
+  scroller.scrollTop=priorY;tabs.scrollLeft=priorTabsX;
+  return;
+ }
+ return v88PrevWorkClick(e);
+};
+// Las pantallas de Administracion tambien conservan su posicion al actualizar una vista.
+const v88PrevAdminRender=render;
+render=function(...args){
+ const main=document.getElementById('content');const oldPage=main?.dataset.v88Page||'';
+ const y=window.scrollY,innerY=main?.scrollTop||0;
+ const val=v88PrevAdminRender(...args);
+ const current=document.getElementById('content');if(current){current.dataset.v88Page=String(page||'');
+  if(oldPage===String(page||''))current.scrollTop=innerY;
+ }
+ if(oldPage===String(page||'')&&Math.abs(window.scrollY-y)>2){
+  const oldBehavior=document.documentElement.style.scrollBehavior;
+  document.documentElement.style.scrollBehavior='auto';window.scrollTo(0,y);
+  document.documentElement.style.scrollBehavior=oldBehavior;
+ }
+ return val;
+};
+// El documento REC conserva sus datos, pero cambia el ajuste visual para iPhone y para A4.
+const v88PriorReceiptDocument=v84Document;
+const V88_RECEIPT_PRINT_CSS=`
+*,*::before,*::after{box-sizing:border-box}
+html{width:100%;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%}
+body{box-sizing:border-box;width:min(100%,780px);max-width:100%;padding:22px 18px 28px;margin:0 auto;overflow-wrap:break-word;overflow-x:hidden}
+header{min-width:0;max-width:100%;flex-wrap:wrap;column-gap:16px;row-gap:10px}
+header>*{min-width:0;max-width:100%}
+table{width:100%;max-width:100%;table-layout:fixed}
+td{overflow-wrap:anywhere;word-break:normal}
+td:first-child{width:76%}td:last-child{width:24%;white-space:nowrap}
+.totals{max-width:100%;break-inside:avoid}
+.totals div>*{min-width:0;overflow-wrap:anywhere}
+.print{max-width:100%;font-size:14px;cursor:pointer}
+@media(max-width:520px){body{padding:16px 14px 24px;font-size:13px}header{gap:9px;align-items:flex-start}header strong{font-size:21px}header>div{margin-left:auto}h1{font-size:20px}h2{margin-top:19px}.totals{padding:12px}.totals div{gap:8px}}
+@media print{
+ @page{size:A4;margin:15mm}
+ html,body{width:auto!important;max-width:none!important;overflow:visible!important;padding:0!important;margin:0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ header{display:flex;flex-wrap:nowrap;break-after:avoid}
+ table{table-layout:fixed}tr{break-inside:avoid}td{overflow-wrap:anywhere}
+ .totals{background:#f1f7f2!important;break-inside:avoid}
+ .print{display:none!important}
+}
+`;
+v84Document=function(rec){const original=v88PriorReceiptDocument(rec);return original.replace('</style></head>',V88_RECEIPT_PRINT_CSS+'</style></head>');};
+// Contrato sencillo para validar la estabilidad, sin afectar operacion comercial.
+window.ElevaUXStability={activeModal:()=>w.modal||null,activePage:()=>w.page||null,
+ receiptDocument:(id)=>{const r=v84FindReceipt(id);return r?v84Document(r):null},
+ scroll:()=>({page:shadow?.host?.scrollTop||0,modal:shadow?.querySelector('#v51-overlay .sheet-body')?.scrollTop||0})};
+
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
 })();
