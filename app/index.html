@@ -20331,6 +20331,7 @@ topbar=function(){
   menu.innerHTML='<div class="v99-profile-intro">'+v99PhotoMarkup(u)+'<div><strong>'+esc(u.name)+'</strong><small>Encargado \u00b7 '+esc(shortSite())+'</small></div></div>'+
   '<button class="v99-menu-action" type="button" data-action="v99ViewProfile">'+ico('user','sm')+' Ver mi perfil</button>'+
   '<button class="v99-menu-action" type="button" data-action="v99UploadPhoto">'+ico('plus','sm')+' Actualizar foto</button>'+
+  '<button class="v99-menu-action" type="button" data-action="v99ChangeProfile">'+ico('settings','sm')+' Cambiar perfil</button>'+
   '<input class="v99-photo-file" id="v99-photo-menu" type="file" accept="image/*" aria-label="Seleccionar foto de perfil">';
   avatar.after(menu);
  }
@@ -20501,6 +20502,7 @@ onWorkClick=function(e){
    if(action==='v99ProfileMenu'){w.v99ProfileOpen=!w.v99ProfileOpen;workerRender();return;}
    if(action==='v99ProfileClose'){w.v99ProfileOpen=false;workerRender();return;}
    if(action==='v99ViewProfile'){w.v99ProfileOpen=false;openWorkerModal('profile');return;}
+   if(action==='v99ChangeProfile'){w.v99ProfileOpen=false;choose();return;}
    if(action==='v99UploadPhoto'){const input=shadow.querySelector(w.modal==='profile'?'#v99-photo-modal':'#v99-photo-menu');input?.click();return;}
    if(action==='v99RemovePhoto'){delete current().v99ProfilePhoto;persistAll();workerRender();fire('Foto de perfil retirada.');return;}
    if(action==='v99MoreRecords'){w.v99ListLimit=(Number(w.v99ListLimit)||60)+60;workerRender();return;}
@@ -20538,6 +20540,156 @@ window.ElevaInternasHistorial={
  count:()=>data.v72InternalUses?.length||0,
  cancelled:()=>data.v72InternalUses?.filter(x=>x.status==='Cancelado').length||0,
  filterState:()=>({type:w.v99ListType||'all',status:w.v99ListStatus||'all'})
+};
+
+
+/* Eleva Sport | Agenda: gesto Jugó sin cambiar el diseño de la tarjeta.
+   La finalización usa el flujo de atención existente, con auditoría,
+   sin editar cobros, cancelar ni liberar anticipadamente la cancha. */
+const V100_SWIPES_CSS=`
+#v51-worker-app .v100-swipe-shell{position:relative;isolation:isolate;min-width:0;width:100%;border-radius:15px;overflow:hidden;touch-action:pan-y}
+#v51-worker-app .v100-swipe-shell>.v52-booking-card{position:relative;z-index:1;transform:translate3d(0,0,0);will-change:transform;touch-action:pan-y;transition:transform .19s ease;user-select:none;-webkit-user-select:none}
+#v51-worker-app .v100-swipe-shell.v100-swiping>.v52-booking-card{transition:none}
+#v51-worker-app .v100-swipe-shell.v100-open>.v52-booking-card{transform:translate3d(92px,0,0)}
+#v51-worker-app .v100-swipe-action{position:absolute;inset:0 auto 0 0;width:92px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;border:0;border-radius:15px 0 0 15px;background:#e0f8e6;color:#166b35;cursor:pointer;font-size:12px;font-weight:800;padding:7px 4px;box-sizing:border-box;z-index:0}
+#v51-worker-app .v100-swipe-action svg{width:20px;height:20px}
+#v51-worker-app .v100-swipe-action:focus-visible{outline:3px solid #00ae52;outline-offset:-4px}
+#v51-worker-app .v100-undo-bar{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:35;display:flex;align-items:center;justify-content:space-between;gap:13px;width:max-content;max-width:calc(100vw - 28px);box-sizing:border-box;padding:10px 12px;border-radius:13px;background:#12232d;color:#fff;box-shadow:0 10px 25px #12232d33;font-size:12px;line-height:1.35}
+#v51-worker-app .v100-undo-bar button{padding:6px 8px;border:0;border-radius:7px;background:#00e64d;color:#12232d;font:inherit;font-weight:800;cursor:pointer;flex-shrink:0}
+#v51-worker-app .v100-undo-bar span{overflow:hidden;text-overflow:ellipsis}
+#v51-worker-app .sheet.v52-detail-sheet .v52-detail-block{padding-top:10px;padding-bottom:10px}
+#v51-worker-app .sheet.v52-detail-sheet .v52-summary{margin:8px 0;gap:6px}
+#v51-worker-app .sheet.v52-detail-sheet .v52-summary>div{padding:10px 8px}
+#v51-worker-app .sheet.v52-detail-sheet .v52-detail-row{margin-bottom:10px}
+@media(prefers-reduced-motion:reduce){#v51-worker-app .v100-swipe-shell>.v52-booking-card{transition:none}}
+`;
+function v100Use(r){return r?.v51Usage?.status||'pending';}
+function v100Ended(r){
+ const start=Date.parse(String(r?.date||'')+'T'+String(r?.startTime||'00:00')+':00-05:00');
+ const minutes=Number(r?.duration||getSnap(r)?.duration||0);
+ return Number.isFinite(start)&&Number.isFinite(minutes)&&minutes>0&&Date.now()>=start+minutes*60000;
+}
+function v100Completed(r){return ['completed','no_show','not_realized'].includes(v100Use(r));}
+function v100CanSwipe(r){return v89Desk()&&w.page==='reservations'&&w.resView==='agenda'&&
+ r?.status==='Confirmada'&&allowed(current(),r.venueId)&&authorized(current(),'rental',r.venueId)&&
+ ['pending','arrived','in_progress'].includes(v100Use(r))&&v100Ended(r);
+}
+// Only the pending Agenda is cleaned up. Canchas and Lista retain all relevant records.
+const v100OldDaily=v87Daily;
+v87Daily=function(){const events=v100OldDaily();if(!v89Desk())return events;
+ return events.filter(x=>x.type!=='rental'||
+ (x.r?.status!=='Cancelada'&&x.r?.status!=='Vencida'&&!v100Completed(x.r)));
+};
+const v100OldEventItem=eventItem;
+eventItem=function(x){const html=v100OldEventItem(x);
+ if(x?.type!=='rental'||!v100CanSwipe(x.r)||!html.includes('v52-booking-card'))return html;
+ return '<div class="v100-swipe-shell" data-v100-id="'+esc(x.r.id)+'" aria-label="Desliza a la derecha para indicar que jugó">'+
+  '<button type="button" class="v100-swipe-action" data-action="v100Play" data-id="'+esc(x.r.id)+'" aria-label="Marcar partido como jugado">'+ico('checkcircle','sm')+'<span>Jugó</span></button>'+html+'</div>';
+};
+// Lista: se puede recuperar el registro de cualquier partido finalizado.
+const v100PrevStateOptions=v99StateOptions;
+v99StateOptions=function(type){const options=v100PrevStateOptions(type);
+ if(type==='all'||type==='commercial'){
+  const at=options.findIndex(x=>x[0]==='active');
+  options.splice(at+1,0,['completed','Finalizadas']);
+ }
+ return options;
+};
+const v100PrevMatchState=v99MatchesState;
+v99MatchesState=function(item,status){
+ if(item.kind==='commercial'){
+  if(status==='completed')return item.r.status==='Confirmada'&&v100Use(item.r)==='completed';
+  if(status==='active')return item.r.status==='Confirmada'&&!v100Completed(item.r);
+ }
+ return v100PrevMatchState(item,status);
+};
+function v100UndoBar(){
+ const u=w.v100Undo;
+ if(!v89Desk()||w.page!=='reservations'||w.resView!=='agenda'||!u||Date.now()>u.expiresAt)return '';
+ return '<div class="v100-undo-bar" role="status"><span>'+esc(u.code)+' · Marcada como «Jugó»</span><button type="button" data-action="v100Undo">Deshacer</button></div>';
+}
+const v100PrevReservationBody=reservationBody;
+reservationBody=function(){const html=v100PrevReservationBody();return w.resView==='agenda'?html+v100UndoBar():html;};
+function v100Play(id){
+ const r=get(data.v48RentalOps,id);
+ assert(v100CanSwipe(r),'«Jugó» solo está disponible después de terminar una reserva confirmada y autorizada.');
+ const from=v100Use(r);
+ if(from==='pending'){
+  assert(window.V69Operations?.usage,'No está disponible el registro operativo.');
+  window.V69Operations.usage(r.id,'completed','Partido realizado y confirmado desde la Agenda.');
+ }else{
+  attendance(r.id,'completed');
+  const history=r.v51Usage?.history||[];if(history.length)history[history.length-1].reason='Partido realizado y confirmado desde la Agenda.';
+  audit('Partido marcado como jugado desde Agenda',{rentalId:r.id,venueId:r.venueId});persistAll();
+ }
+ w.v100Undo={id:r.id,code:r.code,from,by:current().id,historySize:r.v51Usage?.history?.length||0,expiresAt:Date.now()+13000};
+ workerRender();
+ const record=w.v100Undo;
+ setTimeout(()=>{if(w.v100Undo===record){w.v100Undo=null;shadow?.querySelector('.v100-undo-bar')?.remove();}},13200);
+}
+function v100UndoPlay(){
+ const u=w.v100Undo,r=get(data.v48RentalOps,u?.id);
+ assert(u&&r&&Date.now()<=u.expiresAt&&u.by===current().id,'El tiempo para deshacer terminó.');
+ assert(r.status==='Confirmada'&&v100Use(r)==='completed'&&r.v51Usage?.history?.length===u.historySize,'La reserva ya cambió; consulta su historial.');
+ assert(allowed(current(),r.venueId)&&authorized(current(),'rental',r.venueId),'Sin autorización para esta operación.');
+ r.v51Usage.history.push({at:now(),actorId:current().id,from:'completed',to:u.from,reason:'Se deshizo la acción Jugó en la Agenda.',undone:true});
+ r.v51Usage.status=u.from;
+ (r.audit||(r.audit=[])).push({at:now(),actorId:current().id,text:'Acción Jugó deshecha por el encargado'});
+ audit('Marcación Jugó deshecha',{rentalId:r.id,venueId:r.venueId});
+ persistAll();w.v100Undo=null;workerRender();
+}
+function v100ResetSwipe(shell){if(!shell)return;shell.classList.remove('v100-open','v100-swiping');const card=shell.querySelector('.v52-booking-card');if(card)card.style.transform='';}
+function v100BindSwipes(){
+ if(!shadow||!v89Desk()||w.page!=='reservations'||w.resView!=='agenda'||w.modal)return;
+ shadow.querySelectorAll('.v100-swipe-shell').forEach(shell=>{
+  if(shell.dataset.v100Bound)return;shell.dataset.v100Bound='1';
+  const card=shell.querySelector('.v52-booking-card');if(!card)return;
+  let startX=0,startY=0,travel=0,moving=false,horizontal=false;
+  function begin(x,y){startX=x;startY=y;travel=0;moving=true;horizontal=false;}
+  function update(x,y){if(!moving)return;const dx=x-startX,dy=y-startY;
+   if(!horizontal){if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){moving=false;return;}if(Math.abs(dx)<9)return;horizontal=Math.abs(dx)>Math.abs(dy)*1.2;}
+   if(horizontal){travel=dx;shell.classList.add('v100-swiping');card.style.transform='translate3d('+Math.max(0,Math.min(92,dx+(shell.classList.contains('v100-open')?92:0)))+'px,0,0)';}
+  }
+  function finish(){if(!moving&& !horizontal)return;moving=false;const wasOpen=shell.classList.contains('v100-open');
+   if(horizontal){const open=travel>(wasOpen?-40:45);
+    if(open){shadow.querySelectorAll('.v100-swipe-shell.v100-open').forEach(x=>{if(x!==shell)v100ResetSwipe(x)});shell.classList.add('v100-open');}
+    else shell.classList.remove('v100-open');
+    shell.dataset.v100SuppressUntil=String(Date.now()+350);
+   }
+   shell.classList.remove('v100-swiping');card.style.transform='';horizontal=false;travel=0;
+  }
+  card.addEventListener('touchstart',ev=>{if(ev.touches.length===1)begin(ev.touches[0].clientX,ev.touches[0].clientY)},{passive:true});
+  card.addEventListener('touchmove',ev=>{if(ev.touches.length===1)update(ev.touches[0].clientX,ev.touches[0].clientY)},{passive:true});
+  card.addEventListener('touchend',finish,{passive:true});card.addEventListener('touchcancel',()=>{moving=false;horizontal=false;v100ResetSwipe(shell)},{passive:true});
+  card.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse'&&ev.button===0)begin(ev.clientX,ev.clientY)});
+  card.addEventListener('pointermove',ev=>{if(ev.pointerType==='mouse'&&moving)update(ev.clientX,ev.clientY)});
+  card.addEventListener('pointerup',ev=>{if(ev.pointerType==='mouse')finish()});
+  card.addEventListener('pointercancel',()=>{moving=false;horizontal=false;v100ResetSwipe(shell)});
+  shell.addEventListener('click',ev=>{if(ev.target.closest('.v100-swipe-action'))return;
+   if(Date.now()<Number(shell.dataset.v100SuppressUntil||0)){ev.preventDefault();ev.stopImmediatePropagation();}
+  },true);
+ });
+}
+const v100PriorWorkerRender=workerRender;
+workerRender=function(...args){v100PriorWorkerRender(...args);if(!shadow)return;
+ if(!shadow.getElementById('v100-gesture-styles')){const st=document.createElement('style');st.id='v100-gesture-styles';st.textContent=V100_SWIPES_CSS;shadow.appendChild(st);}
+ v100BindSwipes();
+};
+const v100PriorWorkClick=onWorkClick;
+onWorkClick=function(ev){const button=ev.target.closest?.('[data-action]'),action=button?.dataset?.action;
+ if(action==='v100Play'||action==='v100Undo'){
+  ev.preventDefault();ev.stopPropagation();
+  try{if(action==='v100Play')v100Play(Number(button.dataset.id));else v100UndoPlay();}
+  catch(e){console.error('[Eleva gesto Jugó]',e);fire(e.message||'No se pudo marcar la reserva.');}
+  return;
+ }
+ return v100PriorWorkClick(ev);
+};
+window.ElevaAgendaSwipe={
+ eligible:id=>v100CanSwipe(get(data.v48RentalOps,id)),
+ status:id=>v100Use(get(data.v48RentalOps,id)),
+ completedCount:()=>data.v48RentalOps.filter(r=>v100Use(r)==='completed').length,
+ play:id=>v100Play(id),undo:()=>v100UndoPlay()
 };
 
 render();if(role()!=="admin")mount();
