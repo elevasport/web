@@ -750,7 +750,7 @@ const seed={
 let data;try{data=JSON.parse(localStorage.getItem('eleva_admin_v3_demo')||'null')||copy(seed)}catch{data=copy(seed)}
 for(const key in seed){if(!(key in data))data[key]=copy(seed[key])}
 let page='home',selectedVenue=null,venueTab='spaces',rateKind='rental',rateVenue='all',rateLayout='list',rateQuery='',selectedRates=new Set(),academyTab='students',commerceTab='agreements',securityTab='users',financeTab='accounts',identityTab='brand',identityDraft=copy(data.identityDraft||data.identity),customerSearch='',studentSearch='',auditSearch='',detailCustomerId=null,detailStudentId=null,showDrawer=false;
-const menuGroups=[{label:'GENERAL',items:[['home','Centro de administración','home']]},{label:'INSTALACIONES Y RESERVAS',items:[['venues','Sedes y espacios','venues'],['services','Servicios y paquetes','services'],['rates','Tarifas y precios','rates']]},{label:'COMERCIAL · ALQUILERES Y EVENTOS',items:[['customers','Clientes comerciales','customers'],['agreements','Convenios y descuentos','agreements']]},{label:'ACADEMIA',items:[['academy','Academia y alumnos','academy'],['scholarships','Becas y beneficios','scholarships']]},{label:'GESTIÓN EMPRESARIAL',items:[['finance','Finanzas y tesorería','finance'],['security','Personal y accesos','security']]},{label:'SISTEMA Y CONTROL',items:[['identity','Identidad y documentos','identity'],['audit','Auditoría y seguridad','audit']]}];
+const menuGroups=[{label:'GENERAL',items:[['home','Centro de administración','home']]},{label:'INSTALACIONES Y RESERVAS',items:[['venues','Sedes y espacios','venues'],['services','Servicios y paquetes','services'],['rates','Tarifas y precios','rates']]},{label:'COMERCIAL · ALQUILERES Y EVENTOS',items:[['customers','Clientes comerciales','customers'],['agreements','Acuerdos y beneficios','agreements']]},{label:'ACADEMIA',items:[['academy','Academia y alumnos','academy'],['scholarships','Becas y beneficios','scholarships']]},{label:'GESTIÓN EMPRESARIAL',items:[['finance','Finanzas y tesorería','finance'],['security','Personal y accesos','security']]},{label:'SISTEMA Y CONTROL',items:[['identity','Identidad y documentos','identity'],['audit','Auditoría y seguridad','audit']]}];
 const getVenue=id=>data.venues.find(x=>x.id===Number(id));const venueName=id=>getVenue(id)?.name||'Sede no disponible';const studentName=id=>data.students.find(x=>x.id===Number(id))?.name||'Alumno';const clientName=id=>data.customers.find(x=>x.id===Number(id))?.name||'Cliente';const employeeName=id=>data.employees.find(x=>x.id===Number(id))?.name||'Empleado';const roleName=id=>data.roles.find(x=>x.id===Number(id))?.name||'Rol';const seasonName=id=>data.seasons.find(x=>x.id===Number(id))?.name||'Temporada';
 const selected=(a,b)=>String(a)===String(b)?'selected':'';
 const opts=(arr,current,lab='name')=>arr.map(x=>`<option value="${h(x.id)}" ${selected(x.id,current)}>${h(x[lab])}</option>`).join('');
@@ -758,7 +758,7 @@ function log(action,area='Administración'){data.audit.unshift({id:randId(),who:
 function persist(){try{localStorage.setItem('eleva_admin_v3_demo',JSON.stringify(data))}catch(err){toast('No se pudo guardar en este navegador')} }
 function save(action,area){log(action,area);persist();render();toast(action+' · guardado')}
 function toast(s){const n=document.getElementById('toast');n.textContent=s;n.style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>n.style.display='none',3400)}
-const namePages={home:'Administración',venues:'Sedes y espacios',venueDetail:'Detalle de sede',services:'Servicios y paquetes',rates:'Tarifas y precios',customers:'Clientes comerciales',customerDetail:'Ficha comercial',agreements:'Convenios y descuentos',academy:'Academia y alumnos',studentDetail:'Ficha de alumno',scholarships:'Becas y beneficios',security:'Personal y accesos',finance:'Finanzas y tesorería',identity:'Identidad y documentos',audit:'Auditoría y seguridad'};
+const namePages={home:'Administración',venues:'Sedes y espacios',venueDetail:'Detalle de sede',services:'Servicios y paquetes',rates:'Tarifas y precios',customers:'Clientes comerciales',customerDetail:'Ficha comercial',agreements:'Acuerdos y beneficios',academy:'Academia y alumnos',studentDetail:'Ficha de alumno',scholarships:'Becas y beneficios',security:'Personal y accesos',finance:'Finanzas y tesorería',identity:'Identidad y documentos',audit:'Auditoría y seguridad'};
 function sidebar(){return `<div class="brand"><div class="mark">E↗</div><div><strong>ELEVA SPORT</strong><small>Panel de administración</small></div></div>${menuGroups.map(g=>`<div class="navgrp"><div class="navlabel">${g.label}</div>${g.items.map(([id,title,ic])=>`<button class="navitem ${((page==='venueDetail'&&id==='venues')||(page==='customerDetail'&&id==='customers')||(page==='studentDetail'&&id==='academy')||id===page)?'active':''}" onclick="go('${id}')">${icon(ic,17)}<span class="navtext">${title}</span></button>`).join('')}</div>`).join('')}<div class="sidebottom"><span class="demo-dot"></span> Entorno de demostración<br><br>Master · Administrador General</div>`}
 function mobilebar(){const active=page==='venueDetail'?'venues':page==='studentDetail'?'academy':page;return [['home','Inicio','home'],['venues','Sedes','venues'],['rates','Tarifas','rates'],['academy','Academia','academy'],['more','Menú','menu']].map(([id,label,ic])=>`<button class="${id===active?'active':''}" onclick="${id==='more'?'openDrawer()':`go('${id}')`}">${icon(ic,21)}<span>${label}</span></button>`).join('')}
 function openDrawer(){document.getElementById('drawer').innerHTML=`<aside class="sidebar">${sidebar()}</aside>`;document.getElementById('drawer').classList.add('open');document.body.style.overflow='hidden'}
@@ -1042,7 +1042,7 @@ toggleAllRates=function(checked){const all=data.rates.filter(x=>x.kind===rateKin
 const oldBulkRateModal=bulkRateModal;
 bulkRateModal=function(){const selected=data.rates.filter(x=>selectedRates.has(x.id));if(selected.some(x=>!isActive('rates',x))){toast('Las tarifas finalizadas no deben modificarse en bloque. Selecciona solo tarifas vigentes.');return}oldBulkRateModal()};
 customers=function(){const all=data.customers,filtered=all.filter(x=>`${x.name} ${x.type}`.toLowerCase().includes(customerSearch.toLowerCase()));return title('Comercial / clientes','Clientes comerciales','Personas, empresas y academias externas que alquilan espacios o contratan eventos. Sin fichas académicas.',`<button class="btn" onclick="customerModal()">${icon('plus')} Nuevo cliente</button>`)+`<div class="search" style="margin-bottom:14px">${icon('search',17)}<input placeholder="Buscar cliente o empresa..." value="${h(customerSearch)}" oninput="customerSearch=this.value;filterCustomerCards()"></div>`+statusToolbar('customers',all,'clientes')+`<div id="customerResults" class="records">${customerCards(visibleList('customers',filtered))}</div><div class="callout" style="margin-top:15px">Archivar un cliente no borra sus convenios ni contratos. Los clientes con convenios vigentes deben resolverlos antes de archivarse.</div>`};
-customerCards=function(items){return items.map(c=>v4Card('customers',c,c.name,c.type+' · '+venueName(c.venueId),`<p class="lifecycle-help">${h(c.phone||'Sin teléfono')} · ${data.agreements.filter(a=>a.clientId===c.id).length} convenio(s)</p>`,`<button class="btn outline sm" onclick="toCustomer(${c.id})">Ver ficha comercial ${icon('arrow',14)}</button>`)).join('')||noteEmpty('customers','customers')};
+customerCards=function(items){return items.map(c=>v4Card('customers',c,c.name,c.type+' · '+venueName(c.venueId),`<p class="lifecycle-help">${h(c.phone||'Sin teléfono')} · ${data.agreements.filter(a=>window.V102?.matches?.(a,c.id)??a.clientId===c.id).length} acuerdo(s)</p>`,`<button class="btn outline sm" onclick="toCustomer(${c.id})">Ver ficha comercial ${icon('arrow',14)}</button>`)).join('')||noteEmpty('customers','customers')};
 filterCustomerCards=function(){const el=document.getElementById('customerResults');if(!el)return;el.innerHTML=customerCards(visibleList('customers',data.customers.filter(x=>`${x.name} ${x.type}`.toLowerCase().includes(customerSearch.toLowerCase()))))};
 customerDetail=function(){const x=getRecord('customers',detailCustomerId);if(!x)return empty('No se encuentra el cliente.');const deals=data.agreements.filter(d=>d.clientId===x.id);return back('customers')+title('Comercial / ficha de cliente',h(x.name),h(x.type)+' · '+h(x.phone||'Sin teléfono'),`<div class="row-wrap">${stateBadge('customers',x)}${actionMenu('customers',x.id)}<button class="btn outline" onclick="customerModal(${x.id})">${icon('edit')} Editar</button></div>`)+`<div class="split"><div class="card cardpad"><div class="row-between"><h2 class="sectiontitle" style="margin:0">Convenios asociados</h2><button class="btn sm" onclick="agreementModal(null,${x.id})">${icon('plus')} Convenio</button></div>${deals.length?deals.map(a=>`<div class="details"><div><strong>${h(a.name)}</strong><small>${h(a.mode)} · ${h(a.frequency)}</small></div><div class="row-wrap">${stateBadge('agreements',a)}${actionMenu('agreements',a.id)}</div></div>`).join(''):empty('Todavía no tiene convenios.')}</div><div class="card cardpad"><h2 class="sectiontitle">Información comercial</h2>${[['Teléfono',x.phone||'No registrado'],['Correo',x.email||'No registrado'],['Sede de referencia',venueName(x.venueId)],['Estado',stateName('customers',x)]].map(([k,v])=>`<div class="details"><div><small>${k}</small><strong>${h(v)}</strong></div></div>`).join('')}</div></div>`};
 
@@ -1167,7 +1167,7 @@ menuGroups.push(
 {label:'INSTALACIONES Y RESERVAS',items:[['venues','Sedes y espacios','venues'],['services','Servicios y paquetes','services'],['rates','Tarifas y precios','rates']]},
 {label:'RESERVAS',items:[['reservationSettings','Estados y reglas','calendar']]},
 {label:'EVENTOS Y COTIZACIONES',items:[['eventSettings','Configuración de eventos','briefcase'],['quoteTemplates','Plantillas de cotización','copy']]},
-{label:'CLIENTES COMERCIALES',items:[['customers','Clientes comerciales','customers'],['agreements','Convenios y descuentos','agreements']]},
+{label:'CLIENTES COMERCIALES',items:[['customers','Clientes comerciales','customers'],['agreements','Acuerdos y beneficios','agreements']]},
 {label:'ACADEMIA',items:[['academy','Academia y alumnos','academy'],['scholarships','Becas y beneficios','scholarships']]},
 {label:'GESTIÓN EMPRESARIAL',items:[['finance','Finanzas y tesorería','finance'],['security','Personal y accesos','security']]},
 {label:'SISTEMA Y CONTROL',items:[['identity','Identidad y documentos','identity'],['audit','Auditoría y seguridad','audit']]}
@@ -1699,7 +1699,7 @@ function v7EmployeeModal(id){const e=data.employees.find(x=>x.id===Number(id));c
 function v7EmployeeDetail(){const e=data.employees.find(x=>x.id===detailEmployeeId);if(!e)return back('security')+v7Empty('Trabajador no encontrado');const assignments=data.academyTurns.filter(t=>t.coachId===e.id||(t.assistantIds||[]).includes(e.id)),usr=data.users.find(x=>x.employeeId===e.id);return back('security')+`<section class="card v7-profile">${v7Avatar(e.name,e.photoData,true)}<div class="v7-profile-main"><div class="eyebrow">PERSONAL / FICHA DE TRABAJADOR</div><h2>${h(e.name)}</h2><p>${h(e.position)} · ${(e.venues||[]).map(venueName).map(h).join(', ')}</p><div class="row-wrap">${v7TabBadge(e.status,e.status==='Activo'?'':'off')}${v7TabBadge('Identidad '+(e.identityStatus||'Pendiente'),e.identityStatus==='Verificada'?'':'warn')}${v7TabBadge(usr?'Acceso '+usr.status:'Sin usuario',usr?.status==='Activo'?'':'off')}</div><div class="v7-profile-actions"><label class="btn sm outline v7-photo-upload">${icon('plus',14)} ${e.photoData?'Cambiar foto':'Agregar foto'}<input type="file" accept="image/jpeg,image/png,image/webp" onchange="v7SetProfilePhoto(this,'employees',${e.id})"></label><button class="btn sm outline" onclick="employeeModal(${e.id})">Editar ficha</button><button class="btn sm outline" onclick="v7IdentityReview(${e.id})">Verificar identidad</button></div></div></section><div class="v7-stats"><div class="v7-stat"><span>Turnos académicos</span><b>${assignments.length}</b></div><div class="v7-stat"><span>Sedes</span><b>${(e.venues||[]).length}</b></div><div class="v7-stat"><span>Estado de acceso</span><b style="font-size:16px">${h(usr?.status||'Sin cuenta')}</b></div><div class="v7-stat"><span>Estado laboral</span><b style="font-size:16px">${h(e.status)}</b></div></div><div class="v7-finance-layout"><section class="card cardpad"><div class="v7-sectionline"><h3>Información laboral y de identidad</h3><button class="btn sm outline" onclick="employeeModal(${e.id})">Editar</button></div>${[['Nombres',e.firstName||'—'],['Apellidos',e.lastName||'—'],['Tipo de documento',e.documentType||'—'],['N.º de documento',e.documentNumber||'Sin registrar'],['Teléfono',e.phone||'—'],['Correo de contacto',e.email||'—'],['Fecha de ingreso',e.startDate||'—'],['Fecha de baja',e.terminationDate||'—'],['Motivo de baja',e.terminationReason||'—']].map(([k,v])=>`<div class="details"><div><small>${h(k)}</small><strong>${h(v)}</strong></div></div>`).join('')}<div class="v7-person-footer"><button class="btn outline sm" onclick="askState('employees',${e.id})">${e.status==='Activo'?'Registrar baja':'Reactivar trabajador'}</button></div></section><aside class="card cardpad"><div class="v7-sectionline"><h3>Turnos y asignaciones</h3><button class="btn sm outline" onclick="v7SetAcademyTab('turns')">Abrir Academia</button></div>${assignments.map(t=>`<div class="v7-requirement"><span class="v7-avatar">${icon('academy',17)}</span><div><b>${h(t.name)}</b><small>${h(t.coachId===e.id?'Entrenador principal':'Entrenador asistente')} · ${h(venueName(t.venueId))}</small><small>${h(seasonName(t.seasonId))} · ${h(v7WeekLabel(t.schedule))}</small></div><button class="btn sm outline" onclick="v7OpenTurn(${t.id})">Abrir</button></div>`).join('')||'<p class="v7-mini">Sin turnos asignados. Pueden asignarse desde Academia → Turnos.</p>'}<hr class="v7-hr"><div class="v7-sectionline"><h3>Cuenta de acceso</h3></div>${usr?`<div class="v7-mini">${h(usr.email)}<br>Rol: ${h(roleName(usr.roleId))}</div><div class="v7-person-footer"><button class="btn sm outline" onclick="userModal(${usr.id})">Editar permisos</button><button class="btn sm outline" onclick="demoMail(${usr.id},'reset')">Restablecer contraseña</button><button class="btn sm outline" onclick="demoMail(${usr.id},'invite')">Enviar invitación</button><button class="btn sm secondary" onclick="askState('users',${usr.id})">${usr.status==='Activo'?'Deshabilitar acceso':'Habilitar acceso'}</button></div>`:`<div class="v7-catalog-note">Puede trabajar como entrenador sin tener una cuenta del sistema.</div><button class="btn outline sm" onclick="userModal(null,${e.id})">Crear acceso opcional</button>`}<p class="v7-mini" style="margin-top:12px">Accesos y correos simulados. Se implementarán con Supabase Auth y permisos en servidor.</p></aside></div>${v7Slot()}`}
 function v7IdentityReview(id){const e=data.employees.find(x=>x.id===Number(id));if(!e)return;modal('Verificación del personal','Comprobar la identidad es distinto de escribir un DNI. La revisión queda registrada con responsable.',`<div class="v7-eligibility"><b>${h(e.name)}</b><div class="v7-mini">${h(e.documentType||'Sin tipo de documento')} · ${h(e.documentNumber||'Número pendiente')}</div><p class="v7-mini">Estado actual: ${h(e.identityStatus||'Pendiente')}</p></div>${v7Select('Resultado','identityStatus',[{id:'Pendiente',name:'Pendiente'},{id:'Verificada',name:'Verificada'},{id:'Rechazada',name:'Rechazada'}],e.identityStatus||'Pendiente')}<label class="checkrow"><input type="checkbox" name="reviewed"> Comprobé el documento con el procedimiento autorizado</label><div class="v7-hint">Para cargos con acceso crítico se recomienda multifactor; la carga masiva de copias de documentos no se habilita en esta demo.</div>`,f=>{const status=f.get('identityStatus');if(status==='Verificada'&&(!e.documentNumber||!f.has('reviewed')))return toast('Registra el documento y confirma la revisión');e.identityStatus=status;e.identityCheckedAt=status==='Verificada'?now():'';e.identityCheckedBy=status==='Verificada'?'Administrador (demo)':'';closeModal();save('Identidad '+status.toLowerCase()+': '+e.name,'Personal / verificación')})}
 function v7SecurityView(){if(!['staff','users'].includes(securityTab))return v7PrevSecurity();const kind=securityTab,all=kind==='staff'?data.employees:data.users;const key=kind==='staff'?'staff':'users',active=list=>isActive(kind==='staff'?'employees':'users',list);const filtered=v7StatusFilter(key,all,active).filter(e=>{const s=kind==='staff'?e.name+' '+e.position:employeeName(e.employeeId)+' '+e.email;return s.toLowerCase().includes(v7Query[key].toLowerCase())});return title('Gestión empresarial','Personal y accesos','Personal, cargos, documentos, sedes de trabajo y credenciales independientes.',`<button class="btn" onclick="${kind==='staff'?'employeeModal()':'userModal()'}">${icon('plus',14)} ${kind==='staff'?'Registrar personal':'Nuevo acceso'}</button>`)+tabs([['staff','Personal'],['users','Usuarios'],['roles','Roles y límites'],['approvals','Aprobaciones']],securityTab,'changeSecurityTab')+`<div class="v7-toolbar"><div class="v7-toolbar-left">${v7Searchbar(key,kind==='staff'?'Nombre o cargo...':'Nombre o correo de usuario...')}</div>${v7LayoutControl(key)}</div>${v7StatusPills(key,all,active)}${kind==='staff'?v7ListOrCards('staff',filtered,e=>`<div class="v7-row">${v7Avatar(e.name,e.photoData,true)}<div class="v7-rowmain"><b>${h(e.name)}</b><small>${h(e.position)} · ${(e.venues||[]).map(venueName).map(h).join(', ')}</small><small>Identidad ${h(e.identityStatus||'Pendiente')} · ${data.academyTurns.filter(t=>t.coachId===e.id||(t.assistantIds||[]).includes(e.id)).length} turno(s)</small></div><div class="v7-rowright">${v7TabBadge(e.status,e.status==='Activo'?'':'off')}<button class="btn sm outline" onclick="toEmployee(${e.id})">Ficha</button></div></div>`,e=>`<div class="v7-person-card"><div class="v7-person-head">${v7Avatar(e.name,e.photoData,true)}<div><b>${h(e.name)}</b><small>${h(e.position)}</small></div></div><div class="v7-mini">${(e.venues||[]).map(venueName).join(', ')} · Identidad ${h(e.identityStatus||'Pendiente')}</div><div class="v7-person-footer">${v7TabBadge(e.status,e.status==='Activo'?'':'off')}<button class="btn sm outline" onclick="toEmployee(${e.id})">Abrir ficha</button></div></div>`):v7ListOrCards('users',filtered,u=>`<div class="v7-row"><span class="v7-avatar">${icon('security',18)}</span><div class="v7-rowmain"><b>${h(employeeName(u.employeeId))}</b><small>${h(u.email)} · ${h(roleName(u.roleId))}</small><small>${(u.venues||[]).map(venueName).map(h).join(', ')}</small></div><div class="v7-rowright">${v7TabBadge(u.status,u.status==='Activo'?'':'warn')}<button class="btn sm outline" onclick="userModal(${u.id})">Editar</button></div></div>`,u=>`<div class="v7-person-card"><b>${h(employeeName(u.employeeId))}</b><div class="v7-mini">${h(u.email)} · ${h(roleName(u.roleId))}</div><div class="v7-person-footer">${v7TabBadge(u.status,u.status==='Activo'?'':'warn')}<button class="btn sm outline" onclick="userModal(${u.id})">Editar</button></div></div>`)}<div class="v7-catalog-note" style="margin-top:14px">El puesto o cargo no es automáticamente un rol de acceso. Un entrenador puede estar asignado a un turno sin credenciales; los usuarios se habilitan únicamente cuando se requieran.</div>`}
-function v7CustomersView(){const all=data.customers,filtered=v7StatusFilter('customers',all,x=>isActive('customers',x)).filter(c=>`${c.name} ${c.type} ${c.phone}`.toLowerCase().includes(v7Query.customers.toLowerCase()));return title('Comercial / clientes','Clientes comerciales','Empresas y personas que alquilan canchas o contratan servicios. Sin datos académicos de alumnos.',`<button class="btn" onclick="customerModal()">${icon('plus',14)} Nuevo cliente</button>`)+`<div class="v7-toolbar"><div class="v7-toolbar-left">${v7Searchbar('customers','Nombre, empresa, teléfono...')}</div>${v7LayoutControl('customers')}</div>${v7StatusPills('customers',all,x=>isActive('customers',x))}${v7ListOrCards('customers',filtered,c=>`<div class="v7-row"><span class="v7-avatar">${icon('customers',18)}</span><div class="v7-rowmain"><b>${h(c.name)}</b><small>${h(c.type)} · ${h(c.phone||'Sin teléfono')} · ${h(venueName(c.venueId))}</small><small>${data.agreements.filter(a=>a.clientId===c.id).length} convenio(s)</small></div><div class="v7-rowright">${v7TabBadge(isActive('customers',c)?'Activo':'Archivado',isActive('customers',c)?'':'off')}<button class="btn sm outline" onclick="toCustomer(${c.id})">Abrir ficha</button></div></div>`,c=>`<div class="v7-person-card"><div class="v7-person-head"><span class="v7-avatar">${icon('customers',18)}</span><div><b>${h(c.name)}</b><small>${h(c.type)} · ${h(venueName(c.venueId))}</small></div></div><div class="v7-person-footer"><button class="btn sm outline" onclick="toCustomer(${c.id})">Abrir cliente</button></div></div>`)}`}
+function v7CustomersView(){const all=data.customers,filtered=v7StatusFilter('customers',all,x=>isActive('customers',x)).filter(c=>`${c.name} ${c.type} ${c.phone}`.toLowerCase().includes(v7Query.customers.toLowerCase()));return title('Comercial / clientes','Clientes comerciales','Empresas y personas que alquilan canchas o contratan servicios. Sin datos académicos de alumnos.',`<button class="btn" onclick="customerModal()">${icon('plus',14)} Nuevo cliente</button>`)+`<div class="v7-toolbar"><div class="v7-toolbar-left">${v7Searchbar('customers','Nombre, empresa, teléfono...')}</div>${v7LayoutControl('customers')}</div>${v7StatusPills('customers',all,x=>isActive('customers',x))}${v7ListOrCards('customers',filtered,c=>`<div class="v7-row"><span class="v7-avatar">${icon('customers',18)}</span><div class="v7-rowmain"><b>${h(c.name)}</b><small>${h(c.type)} · ${h(c.phone||'Sin teléfono')} · ${h(venueName(c.venueId))}</small><small>${data.agreements.filter(a=>window.V102?.matches?.(a,c.id)??a.clientId===c.id).length} acuerdo(s)</small></div><div class="v7-rowright">${v7TabBadge(isActive('customers',c)?'Activo':'Archivado',isActive('customers',c)?'':'off')}<button class="btn sm outline" onclick="toCustomer(${c.id})">Abrir ficha</button></div></div>`,c=>`<div class="v7-person-card"><div class="v7-person-head"><span class="v7-avatar">${icon('customers',18)}</span><div><b>${h(c.name)}</b><small>${h(c.type)} · ${h(venueName(c.venueId))}</small></div></div><div class="v7-person-footer"><button class="btn sm outline" onclick="toCustomer(${c.id})">Abrir cliente</button></div></div>`)}`}
 function v7QuotesList(arr){const list=arr.filter(q=>v7QuoteStatus==='all'||(v7QuoteStatus==='active'?q.status!=='Archivada':q.status==='Archivada'));if(!list.length)return '<div class="v7-empty" style="grid-column:1/-1">No hay propuestas con estos filtros.</div>';if(v7LayoutKey('quotes')==='cards')return v7PrevQuoteCards(list);return `<div class="v7-q-list">${list.map(q=>{const c=v6QuoteCalc(q);return `<div class="v7-q-row"><span class="v7-avatar">${icon('copy',19)}</span><div class="v7-rowmain"><b>${h(q.title)} · ${h(q.number)}</b><small>${h(clientName(q.clientId))} · ${h(venueName(q.venueId))} · ${q.dates?.length||0} fecha(s)</small><small>${h(V6_quoteTypes[q.type]?.label||q.type)} · Versión ${h(q.version||1)}</small></div><div class="v7-q-sum"><strong>${v6Currency(c.serviceTotal)}</strong>${v7TabBadge(q.status,q.status==='Archivada'?'off':'')}</div><div class="v7-q-actions"><button class="btn sm outline" onclick="v6OpenQuote(${q.id})">Editar</button><button class="btn sm outline" onclick="v6DuplicateQuote(${q.id})">Duplicar</button><button class="btn sm secondary" onclick="v6Reference(${q.id})">Versiones</button></div></div>`}).join('')}</div>`}
 function v7OnQuoteStatus(s){v7QuoteStatus=s;v6RefreshQuoteList()}
 function v7QuoteToolbar(){return `<div class="v7-toolbar" style="margin:8px 0 15px"><div class="v7-catalog-note" style="flex:1">Cotizaciones con identidad EV-0001. Visualización compacta para consultar muchas propuestas.</div><div class="status-switch"><button class="${v7QuoteStatus==='active'?'active':''}" onclick="v7OnQuoteStatus('active')">Vigentes</button><button class="${v7QuoteStatus==='inactive'?'active':''}" onclick="v7OnQuoteStatus('inactive')">Archivadas</button><button class="${v7QuoteStatus==='all'?'active':''}" onclick="v7OnQuoteStatus('all')">Todas</button></div>${v7LayoutControl('quotes')}</div>`}
@@ -3823,7 +3823,7 @@ const priorItems=menuGroups.flatMap(g=>g.items.map(x=>x[0]));
 const NAV=[
  {label:'INICIO',icon:'home',desc:'Vista general de administración',items:[['home','Inicio','home']]},
  {label:'INSTALACIONES Y RESERVAS',icon:'venues',desc:'Sedes, espacios, oferta comercial y reservas',items:[['venues','Sedes y espacios','venues'],['services','Servicios y paquetes','services'],['rates','Tarifas y precios','rates'],['reservationSettings','Configuración de reservas','calendar']]},
- {label:'COMERCIAL Y EVENTOS',icon:'briefcase',desc:'Clientes, convenios y propuestas comerciales',items:[['customers','Clientes','customers'],['agreements','Convenios y descuentos','agreements'],['quoteCenter','Cotizaciones','copy'],['eventSettings','Configuración de eventos','settings']]},
+ {label:'COMERCIAL Y EVENTOS',icon:'briefcase',desc:'Clientes, convenios y propuestas comerciales',items:[['customers','Clientes','customers'],['agreements','Acuerdos y beneficios','agreements'],['quoteCenter','Cotizaciones','copy'],['eventSettings','Configuración de eventos','settings']]},
  {label:'ACADEMIA',icon:'academy',desc:'Alumnos, matrículas, docentes, becas y pagos',items:[['academy','Academia y alumnos','academy'],['scholarships','Becas y beneficios','scholarships'],['academyPayments','Verificación de pagos','finance']]},
  {label:'COMPETICIONES',icon:'trophy',desc:'Campeonatos, formatos y reglas deportivas',items:[['competitions','Gestión de competiciones','trophy'],['competitionTemplates','Formatos y plantillas','services'],['competitionPolicies','Reglas y criterios','settings']]},
  {label:'FINANZAS Y CAJA',icon:'cash',desc:'Caja, gastos, pagos, proveedores y documentos',items:[['cashDesk','Caja y turnos','cash'],['receivables','Cuentas por cobrar','finance'],['financeControl','Control financiero','finance'],['suppliers','Proveedores y contratos','briefcase'],['billing','Facturación y comprobantes','finance'],['dueCenter','Vencimientos y alertas','calendar'],['finance','Configuración financiera','settings']]},
@@ -6264,7 +6264,7 @@ function ruleSummary(rule){const f=fmtRule(rule);return `${esc(f?.name||rule.for
 agreements=function(){
  const tab=commerceTab||'agreements';
  const cards=data.agreements.map(a=>`<article class="v28-agreement-item"><div class="v28-agreement-head"><h3>${esc(a.name)}</h3><span class="v28-status">${esc(a.status)}</span></div><p>${esc(clientName(a.clientId))} · ${esc(venueName(a.venueId))}</p><p>${esc(formatDate(a.start))} — ${esc(formatDate(a.end))}</p><div class="v28-tags">${(a.rules||[]).map(r=>`<span class="v28-tag">${ruleSummary(r)}</span>`).join('')}</div><button class="btn outline sm" type="button" onclick="agreementModal(${a.id})">Editar convenio</button></article>`).join('');
- return title('Comercial / condiciones','Convenios y descuentos','Acuerdos por cliente y descuentos comerciales.',`<button class="btn" onclick="${tab==='agreements'?'agreementModal()':"benefitModal(null,'commercial')"}">${icon('plus',14)} ${tab==='agreements'?'Nuevo convenio':'Nuevo descuento'}</button>`)+tabs([['agreements','Convenios'],['benefits','Descuentos comerciales']],tab,'changeCommerceTab')+(tab==='benefits'?benefitCatalog('commercial'):`<div class="v28-agreement-list">${cards||'<div class="v28-empty">Todavía no hay convenios comerciales.</div>'}</div>`);
+ return title('Comercial / condiciones','Convenios y descuentos','Acuerdos por cliente y descuentos comerciales.',`<button class="btn" onclick="${tab==='agreements'?'agreementModal()':"benefitModal(null,'commercial')"}">${icon('plus',14)} ${tab==='agreements'?'Nuevo acuerdo':'Nuevo descuento'}</button>`)+tabs([['agreements','Acuerdos'],['benefits','Descuentos comerciales']],tab,'changeCommerceTab')+(tab==='benefits'?benefitCatalog('commercial'):`<div class="v28-agreement-list">${cards||'<div class="v28-empty">Todavía no hay convenios comerciales.</div>'}</div>`);
 };
 // One client workspace. Show recorded activity only; do not manufacture reservation or payment totals.
 const state={clientTab:'summary',clientPeriod:'all'};
@@ -6277,9 +6277,14 @@ function clientQuotes(id){return (data.quoteRecordsV6||[]).filter(q=>Number(q.cl
 function clientSales(id){return (data.billingSales||[]).filter(x=>Number(x.clientId)===Number(id))}
 function recent(a){return [...a].sort((x,y)=>String(y.createdAt||y.date||y.start||'').localeCompare(String(x.createdAt||x.date||x.start||'')))}
 function clientHeader(c){const initials=trim(c.name).split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase();return `<div class="v28-client-head"><span class="v28-client-avatar" aria-hidden="true">${esc(initials||'C')}</span><div style="min-width:0;flex:1"><h1>${esc(c.name)}</h1><p>${esc(c.type)} · ${esc(c.phone||'Sin teléfono')}</p></div><div class="v28-client-actions">${stateBadge('customers',c)}<button class="btn outline sm" onclick="customerModal(${c.id})">${icon('edit',14)} Editar datos</button>${actionMenu('customers',c.id)}</div></div>`}
-function agreementMini(a){return `<div class="v28-row"><div><strong>${esc(a.name)}</strong><small>${esc(a.status)} · ${esc(formatDate(a.start))} — ${esc(formatDate(a.end))}</small><div class="v28-tags">${(a.rules||[]).map(r=>`<span class="v28-tag">${ruleSummary(r)}</span>`).join('')}</div></div><button class="btn outline sm" onclick="agreementModal(${a.id})">Ver convenio</button></div>`}
+function agreementMini(a){const tiers=(a.v101Tiers||[]),terms=tiers.length?tiers.map(t=>{
+ const kind=t.kind,description=kind==='normal'?'tarifa oficial':kind==='perCourtHour'?money2(t.value)+' por cancha/h':kind==='totalHour'?money2(t.value)+' por grupo/h':kind==='percent'?t.value+'% de descuento':money2(t.value)+' de descuento/cancha/h';
+ return (t.format&&t.format!=='*'?t.format+' · ':'')+t.courts+' '+(Number(t.courts)===1?'cancha':'canchas')+' · '+description;
+}):(a.rules||[]).map(ruleSummary);
+return `<div class="v28-row"><div><strong>${esc(a.name)}</strong><small>${esc(a.status)} · ${esc(formatDate(a.start))} — ${esc(formatDate(a.end))}</small><div class="v28-tags">${terms.map(t=>`<span class="v28-tag">${esc(t)}</span>`).join('')}</div></div><button class="btn outline sm" onclick="agreementModal(${a.id})">Ver acuerdo</button></div>`}
+
 function linkMini(link){const b=data.benefits.find(x=>x.id===link.benefitId);return `<div class="v28-row"><div><strong>${esc(b?.name||'Descuento anterior')}</strong><small>${esc(link.status||'Vigente')} · ${b?.type==='percent'?esc(b.value)+'%':b?.type==='fixed'?money2(b.value):'Condición registrada'}</small></div><button class="btn outline sm" onclick="v8UnlinkBenefit(${link.id})">Desvincular</button></div>`}
-function summaryClient(c,deals,links,quotes,sales){const active=deals.filter(x=>x.status==='Vigente');return `<div class="v28-client-grid"><div class="v28-card"><h2>Condiciones comerciales</h2>${active.length?active.slice(0,3).map(agreementMini).join(''):'<div class="v28-empty">No tiene convenios vigentes.</div>'}<div class="v28-toolbar"><button class="btn outline sm" onclick="V28.clientTab('agreements')">Ver convenios y descuentos ${icon('arrow',14)}</button></div></div><div class="v28-card"><h2>Información principal</h2><div class="v28-keyvalues"><div><small>Contacto</small><strong>${esc(c.phone||'No registrado')}</strong></div><div><small>Correo electrónico</small><strong>${esc(c.email||'No registrado')}</strong></div><div><small>Sede de referencia</small><strong>${esc(venueName(c.venueId))}</strong></div><div><small>Tipo de cliente</small><strong>${esc(c.type)}</strong></div></div>${quotes.length||sales.length?`<div class="v28-statgrid"><div class="v28-inline-stat"><small>Cotizaciones registradas</small><strong>${quotes.length}</strong></div><div class="v28-inline-stat"><small>Operaciones vinculadas</small><strong>${sales.length}</strong></div></div>`:""}</div></div>`}
+function summaryClient(c,deals,links,quotes,sales){const active=deals.filter(x=>x.status==='Vigente');return `<div class="v28-client-grid"><div class="v28-card"><h2>Condiciones comerciales</h2>${active.length?active.slice(0,3).map(agreementMini).join(''):'<div class="v28-empty">No tiene acuerdos vigentes.</div>'}<div class="v28-toolbar"><button class="btn outline sm" onclick="V28.clientTab('agreements')">Ver acuerdos y beneficios ${icon('arrow',14)}</button></div></div><div class="v28-card"><h2>Información principal</h2><div class="v28-keyvalues"><div><small>Contacto</small><strong>${esc(c.phone||'No registrado')}</strong></div><div><small>Correo electrónico</small><strong>${esc(c.email||'No registrado')}</strong></div><div><small>Sede de referencia</small><strong>${esc(venueName(c.venueId))}</strong></div><div><small>Tipo de cliente</small><strong>${esc(c.type)}</strong></div></div>${quotes.length||sales.length?`<div class="v28-statgrid"><div class="v28-inline-stat"><small>Cotizaciones registradas</small><strong>${quotes.length}</strong></div><div class="v28-inline-stat"><small>Operaciones vinculadas</small><strong>${sales.length}</strong></div></div>`:""}</div></div>`}
 function activityClient(c,quotes,sales){
  const today=new Date();const period=state.clientPeriod;
  const within=date=>{
@@ -6294,13 +6299,13 @@ function activityClient(c,quotes,sales){
    ...sales.map(s=>({when:s.date||s.createdAt||'',title:trim(s.description||s.id||'Operación'),sub:`Facturación · ${money2(s.amount)} · ${trim(s.status||'')}`,action:`v9Detail('${esc(s.id)}')`}))].filter(x=>within(x.when));
  return `<div class="v28-card"><div class="v28-toolbar" style="justify-content:space-between"><h2 style="margin:0">Actividad registrada</h2><div class="v28-options">${[['all','Todo'],['month','Este mes'],['year','Este año']].map(([k,t])=>`<button type="button" class="${period===k?'active':''}" onclick="V28.clientPeriod('${k}')">${t}</button>`).join('')}</div></div>${items.length?recent(items).map(x=>`<div class="v28-row"><div><strong>${esc(x.title)}</strong><small>${esc(x.sub)}${x.when?' · '+esc(String(x.when).slice(0,10)):''}</small></div><button class="btn outline sm" onclick="${x.action}">Abrir</button></div>`).join(''):'<div class="v28-empty">No hay cotizaciones ni operaciones vinculadas para el período seleccionado.</div>'}</div>`;
 }
-function agreementsClient(c,deals,links){return `<div class="v28-card"><div class="v28-toolbar" style="justify-content:space-between"><h2 style="margin:0">Convenios con este cliente</h2><button type="button" class="btn sm" onclick="agreementModal(null,${c.id})">${icon('plus',13)} Nuevo convenio</button></div>${deals.length?deals.map(agreementMini).join(''):'<div class="v28-empty">Sin convenios registrados.</div>'}</div><div class="v28-card" style="margin-top:14px"><div class="v28-toolbar" style="justify-content:space-between"><h2 style="margin:0">Descuentos comerciales asignados</h2><button type="button" class="btn outline sm" onclick="v8LinkBenefit(${c.id})">Asignar descuento</button></div>${links.length?links.map(linkMini).join(''):'<div class="v28-empty">No se han asignado descuentos del catálogo.</div>'}</div>`}
+function agreementsClient(c,deals,links){return `<div class="v28-card"><div class="v28-toolbar" style="justify-content:space-between"><h2 style="margin:0">Acuerdos comerciales</h2><div class="a102-client-actions"><button type="button" class="btn sm" onclick="agreementModal(null,${c.id})">${icon('plus',13)} Nuevo acuerdo</button><button type="button" class="btn outline sm" onclick="V102.openLink(${c.id})">Vincular existente</button></div></div>${deals.length?deals.map(agreementMini).join(''):'<div class="v28-empty">Sin acuerdos registrados.</div>'}</div><div class="v28-card" style="margin-top:14px"><div class="v28-toolbar" style="justify-content:space-between"><h2 style="margin:0">Descuentos comerciales asignados</h2><button type="button" class="btn outline sm" onclick="v8LinkBenefit(${c.id})">Asignar descuento</button></div>${links.length?links.map(linkMini).join(''):'<div class="v28-empty">No se han asignado descuentos del catálogo.</div>'}</div>`}
 function detailsClient(c){return `<div class="v28-card"><h2>Datos del cliente</h2><div class="v28-keyvalues"><div><small>Nombre o razón social</small><strong>${esc(c.name)}</strong></div><div><small>Tipo</small><strong>${esc(c.type)}</strong></div><div><small>Teléfono</small><strong>${esc(c.phone||'No registrado')}</strong></div><div><small>Correo</small><strong>${esc(c.email||'No registrado')}</strong></div><div><small>Sede de referencia</small><strong>${esc(venueName(c.venueId))}</strong></div><div><small>Estado</small><strong>${esc(stateName('customers',c))}</strong></div></div></div>`}
 customerDetail=function(){
  const c=data.customers.find(x=>Number(x.id)===Number(detailCustomerId));if(!c)return empty('No se encuentra este cliente.');
- const deals=data.agreements.filter(x=>Number(x.clientId)===c.id),links=clientLinks(c.id),quotes=clientQuotes(c.id),sales=clientSales(c.id);
+ const deals=data.agreements.filter(x=>window.V102?.matches?.(x,c.id)??Number(x.clientId)===c.id),links=clientLinks(c.id),quotes=clientQuotes(c.id),sales=clientSales(c.id);
  const content=state.clientTab==='activity'?activityClient(c,quotes,sales):state.clientTab==='agreements'?agreementsClient(c,deals,links):state.clientTab==='details'?detailsClient(c):summaryClient(c,deals,links,quotes,sales);
- return back('customers')+`<p class="eyebrow">COMERCIAL / CLIENTES</p>`+clientHeader(c)+`<nav class="v28-client-nav" aria-label="Secciones del cliente">${[['summary','Resumen'],['activity','Actividad'],['agreements','Convenios'],['details','Datos']].map(([k,text])=>`<button type="button" class="${state.clientTab===k?'active':''}" aria-current="${state.clientTab===k?'page':'false'}" onclick="V28.clientTab('${k}')">${text}</button>`).join('')}</nav>`+content;
+ return back('customers')+`<p class="eyebrow">COMERCIAL / CLIENTES</p>`+clientHeader(c)+`<nav class="v28-client-nav" aria-label="Secciones del cliente">${[['summary','Resumen'],['activity','Actividad'],['agreements','Acuerdos'],['details','Datos']].map(([k,text])=>`<button type="button" class="${state.clientTab===k?'active':''}" aria-current="${state.clientTab===k?'page':'false'}" onclick="V28.clientTab('${k}')">${text}</button>`).join('')}</nav>`+content;
 };
 // Expose only the UI operations required by inline HTML controls and browser tests.
 window.V28={catalogModal,addFormat,addAgreementRule:agreementRows,clientTab,clientPeriod,fmtMatch:byLegacy,fmtRate,formats,formatForSpace(id){const r=data.resources.find(x=>Number(x.id)===Number(id));return fmtNames(r)},discountForAgreement(agreementId,formatId){const a=data.agreements.find(x=>Number(x.id)===Number(agreementId));return a?.rules?.find(r=>String(fmtRule(r)?.id)===String(formatId))||null;}};
@@ -18234,7 +18239,7 @@ window.V68Client={_test:{rentals:v68Rentals,receipts:v68Receipts,stats:v68Stats,
    const row={date:d.date,startTime:d.startTime,duration:d.duration,resourceId:d.resourceId,modality:d.modality,resourceIds:v81IDs(d)};
    const linked=v54Offers(d).filter(o=>['agreement','benefit'].includes(o.kind));
    const eligible=linked.filter(o=>{const result=v54Eligible({...d,discountId:o.id},row,check.calc.total,[row]);return !result.requiresConfig&&result.amount>0&&result.amount<check.calc.total;});
-   if(eligible.length===1){d.v80Choice=eligible[0].id;d.v80AutoSelected=true;}
+   if(eligible.length){const best=window.V102?.chooseSingle?.(eligible,d,row,check.calc.total)||eligible[0];d.v80Choice=best.id;d.v80AutoSelected=true;}
    else if(!d.v80Choice||d.v80AutoSelected){d.v80Choice='none';d.v80AutoSelected=false;}
  }
  function v81Options(d){if(!d.modality)return '<div class="v81-court-blank">Selecciona primero el deporte y formato para ver las canchas correspondientes.</div>';
@@ -20691,6 +20696,452 @@ window.ElevaAgendaSwipe={
  completedCount:()=>data.v48RentalOps.filter(r=>v100Use(r)==='completed').length,
  play:id=>v100Play(id),undo:()=>v100UndoPlay()
 };
+
+/* ELEVA SPORT | Acuerdos comerciales: condiciones por canchas, sin reemplazar formularios. */
+{
+ const A101_CSS=`
+ .a101-section{border:1px solid #dce8e1;border-radius:14px;padding:15px;margin:16px 0;background:#f8fbf8}
+ .a101-section h3{font-size:14px;color:#12232d;margin:0 0 5px;font-weight:800}
+ .a101-section p,.a101-hint{font-size:11px;line-height:1.55;color:#617a70;margin:0 0 11px}
+ .a101-tier{background:white;border:1px solid #dfebe4;border-radius:11px;padding:12px;margin:9px 0}
+ .a101-tier-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+ .a101-tier-head strong{font-size:11px;color:#244639}
+ .a101-tier-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .a101-tier .field{margin:0;min-width:0}.a101-tier .field input,.a101-tier .field select{max-width:100%;min-width:0}
+ .a101-tier .a101-span{grid-column:1/-1}
+ .a101-tier details{margin-top:12px}.a101-tier summary{cursor:pointer;font-size:11px;color:#315d46;font-weight:760}
+ .a101-courts{display:flex;gap:8px;flex-wrap:wrap;padding-top:8px}
+ .a101-courts label{display:flex;align-items:center;gap:5px;font-size:11px;color:#405e50}
+ .a101-courts input{width:16px;height:16px;min-height:auto}
+ .a101-legacy{margin:12px 0}.a101-legacy summary{font-weight:760;font-size:12px;cursor:pointer;color:#526e62}
+ .a101-add{font-size:11px;font-weight:800;padding:8px 12px;border-radius:9px;background:#edf9ef;border:1px solid #b9e0c4;color:#176440;cursor:pointer}
+ .a101-remove{font-size:11px;color:#687f71;background:#fff;border:1px solid #dae5df;padding:6px 9px;border-radius:8px;cursor:pointer}
+ .a101-note{font-size:10.5px;color:#365e45;background:#edf8f0;border-radius:9px;padding:9px 11px;margin-top:6px}
+ .a101-card-extra{font-size:11px;color:#446551;margin:6px 0 8px;line-height:1.5}
+ .a101-worker-note{display:flex;align-items:center;gap:6px;min-width:0;background:#f1f8f3;border-radius:9px;color:#37684b;font-size:10.5px;padding:8px 10px;line-height:1.45;margin-top:6px}
+ @media(max-width:520px){.a101-section{padding:12px}.a101-tier-grid{grid-template-columns:1fr}.a101-tier .a101-span{grid-column:auto}}
+ `;
+ const a101Style=document.createElement('style');a101Style.id='a101-agreements-style';a101Style.textContent=A101_CSS;document.head.appendChild(a101Style);
+ const a101Round=n=>Math.round((Number(n)+Number.EPSILON)*100)/100;
+ const a101Clean=s=>String(s??'').trim();
+ const a101Formats=()=>window.V28?.formats?.()||[];
+ const a101Agreement=(d,id)=> (data.agreements||[]).find(a=>String(a.id)===String(id)&&a.status==='Vigente'&&v102Applies(a,d.customerId)&&String(a.venueId)===String(d.venueId));
+ const a101CourtIds=(row,d)=>{const ids=Array.isArray(row.resourceIds)&&row.resourceIds.length?row.resourceIds:Array.isArray(d.resourceIds)&&d.resourceIds.length?d.resourceIds:[row.resourceId||d.resourceId];const out=window.V27?.resolveSpace?.([...new Set(ids.map(Number))],Number(d.venueId));return out?.ok?out.ids.map(Number):[];};
+ const a101MonthCount=(d,row,allRows,excludeOriginIds=[])=>{
+  const month=String(row.date||'').slice(0,7),excluded=new Set(excludeOriginIds.map(String));
+  let sum=0;
+  for(const x of data.v48RentalOps||[]){if(!['Confirmada','Finalizada'].includes(x.status)||String(x.customerId)!==String(d.customerId)||String(x.venueId)!==String(d.venueId)||String(x.date||'').slice(0,7)!==month||excluded.has(String(x.id)))continue;
+   const physical=a101CourtIds(x,{...d,resourceIds:x.resourceIds,resourceId:x.resourceId});
+   sum+=(Number(x.duration)||0)/60*Math.max(1,physical.length);
+  }
+  const pending=new Set();for(const x of allRows||[row]){if(String(x.date||'').slice(0,7)!==month)continue;const key=String(x.id||'')+'|'+x.date+'|'+x.startTime; if(pending.has(key))continue;pending.add(key);sum+=(Number(x.duration)||0)/60*Math.max(1,a101CourtIds(x,d).length);}
+  return a101Round(sum);
+ };
+ const a101EligibleTier=(d,row,base,allRows,agreement)=>{
+  const physical=a101CourtIds(row,d);if(!physical.length)return {amount:0,label:'Cancha no válida para el acuerdo',kind:'none'};
+  const count=physical.length,fmt=row.modality||d.modality,week=new Date(String(row.date)+'T12:00:00').getDay();
+  const start=v54Minutes(row.startTime),end=start+Number(row.duration||0),hours=Number(row.duration||0)/60;
+  const tiers=(agreement.v101Tiers||[]).filter(t=>{
+   if(Number(t.courts)!==count)return false;
+   if(t.format&&t.format!=='*'&&!v54MatchFormat(t.format,fmt))return false;
+   if(t.weekday!==''&&t.weekday!==null&&t.weekday!==undefined&&Number(t.weekday)!==week)return false;
+   if(t.fromTime&&start<v54Minutes(t.fromTime))return false;
+   if(t.toTime&&end>(t.toTime==='00:00'?1440:v54Minutes(t.toTime)))return false;
+   const allowed=(t.allowedCourtIds||[]).map(Number);
+   return !allowed.length||physical.every(id=>allowed.includes(id));
+  });
+  if(!v54LiveLink(agreement,row.date)||!tiers.length)return {amount:0,label:'Tarifa normal · sin condición especial para esta fecha o canchas',kind:'none'};
+  // Prefer the rule limited to a format, physical courts, weekday and time window.
+  tiers.sort((a,b)=>{
+   const priority=t=>(t.format&&t.format!=='*'?10:0)+(t.allowedCourtIds?.length?20+1/t.allowedCourtIds.length:0)+(t.weekday!==''&&t.weekday!=null?4:0)+(t.fromTime||t.toTime?2:0);
+   return priority(b)-priority(a);
+  });
+  const tier=tiers[0],minimum=Number(agreement.v101MinMonthlyHours||0);
+  if(minimum>0){const replaced=(allRows||[]).map(x=>x.originId).filter(Boolean);const calculated=a101MonthCount(d,row,allRows,replaced);if(calculated+.001<minimum)return {amount:0,label:'Mínimo mensual de '+minimum+' h-cancha no alcanzado ('+calculated+' h)',kind:'none'};}
+  const value=Number(tier.value||0),kind=tier.kind;let desired=base;
+  if(kind==='perCourtHour')desired=value*count*hours;
+  else if(kind==='totalHour')desired=value*hours;
+  else if(kind==='percent')desired=base*(1-value/100);
+  else if(kind==='discountCourtHour')desired=base-value*count*hours;
+  else if(kind==='normal')desired=base;
+  if(!Number.isFinite(desired)||desired<0)desired=0;
+  const amount=a101Round(Math.max(0,Math.min(base,base-desired)));
+  return {amount,label:agreement.name+' · '+count+' '+(count===1?'cancha':'canchas'),kind:'agreement',sourceId:agreement.id,
+   tierId:tier.id,mode:kind,unit:kind==='percent'?'porcentaje':'hora',courts:count,physicalCourtIds:physical,
+   type:kind,value,minimumMonthlyHours:minimum};
+ };
+ const a101BeforeEligible=v54Eligible;
+ v54Eligible=function(d,row,base,allRows){const id=String(d.discountId||'').match(/^agreement:(\d+)$/);
+  if(id){const a=a101Agreement(d,id[1]);if(a&&Array.isArray(a.v101Tiers)&&a.v101Tiers.length){
+    return a101EligibleTier(d,row,base,allRows,a);
+  }}
+  return a101BeforeEligible(d,row,base,allRows);
+ };
+ // Existing automatic selection for single dates already uses v54Eligible. A series
+ // selects its one linked agreement without forcing the attendant to choose it.
+ function a101AutoSeries(d){if(!d||d.v101OfferManual||(!d.v102AutoOffer&&d.discountId&&d.discountId!=='none'))return;
+  const best=window.V102?.chooseSeries?.(d);if(best){d.discountId=best.id;d.v102AutoOffer=true;}else if(d.v102AutoOffer){d.discountId='none';d.v102AutoOffer=false;}
+ }
+ const a101BeforeChange=v54Change;
+ v54Change=function(field,value,meta){const d=v54SelectedDraft();if(d){if(field==='discountId')d.v101OfferManual=true;
+   if(field==='customerId'||field==='venueId')d.v101OfferManual=false;
+  }
+  return a101BeforeChange(field,value,meta);
+ };
+ const a101BeforeSeriesForm=v54FormHTML;
+ v54FormHTML=function(d){a101AutoSeries(d);return a101BeforeSeriesForm(d);};
+ // An expressly selected agreement with a zero-discount tier must not block a
+ // normal-price reservation.  The existing price engine would mark it invalid.
+ const a101BeforeSinglePrice=window.V80.price;
+ window.V80.price=function(d,check){const result=a101BeforeSinglePrice(d,check);
+  if(result.ok||!check?.ok||!String(d?.v80Choice||'').startsWith('agreement:'))return result;
+  const id=String(d.v80Choice).split(':')[1],a=a101Agreement(d,id);
+  if(!a?.v101Tiers?.length)return result;
+  const row={date:d.date,startTime:d.startTime,duration:d.duration,resourceIds:d.resourceIds,resourceId:d.resourceId,modality:d.modality};
+  const benefit=v54Eligible({...d,discountId:d.v80Choice},row,Number(check.calc.total)||0,[row]);
+  if(benefit.amount>0||benefit.requiresConfig)return result;
+  const base=a101Round(check.calc.total);
+  return {ok:true,base,total:base,discount:0,label:'Tarifa normal · acuerdo sin descuento aplicable',benefit};
+ };
+ const a101BeforeOfferUI=v54OfferUI;
+ v54OfferUI=function(d){a101AutoSeries(d);const html=a101BeforeOfferUI(d);
+  const id=String(d.discountId||'').match(/^agreement:(\d+)$/),a=id&&a101Agreement(d,id[1]);
+  return a?.v101Storage?html+'<p class="v54-sub" style="grid-column:1/-1;margin:0">Beneficio adicional: '+esc(a.v101Storage)+' (sin cargo).</p>':html;
+ };
+ // The admin editor is extended with pricing tiers. Its original save path,
+ // customer/venue constraints and catalog fields remain unchanged.
+ const a101Weekdays=[['','Todos los días'],['1','Lunes'],['2','Martes'],['3','Miércoles'],['4','Jueves'],['5','Viernes'],['6','Sábado'],['0','Domingo']];
+ const a101Kinds=[['normal','Sin descuento (tarifa oficial)'],['perCourtHour','Precio por cancha / hora'],['totalHour','Precio total del grupo / hora'],['percent','Descuento porcentual sobre total'],['discountCourtHour','Descuento S/ por cancha / hora']];
+ function a101FormatOptions(selected){const arr=[{id:'*',name:'Todos los formatos'},...a101Formats().map(x=>({id:String(x.id),name:x.name}))];
+  return arr.map(f=>'<option value="'+esc(f.id)+'" '+(String(f.id)===String(selected||'*')?'selected':'')+'>'+esc(f.name)+'</option>').join('');}
+ function a101PhysicalOptions(venueId,selected){const allowed=new Set((selected||[]).map(Number));return (data.resources||[]).filter(r=>Number(r.venueId)===Number(venueId)&&valid(r)).filter(r=>{
+  const a=window.V27.resolveSpace([Number(r.id)],Number(venueId));return a?.ok&&a.ids.length===1&&Number(a.ids[0])===Number(r.id);
+ }).map(r=>'<label><input type="checkbox" data-a101-court="'+esc(String(r.id))+'" '+(allowed.has(Number(r.id))?'checked':'')+'><span>'+esc(r.name)+'</span></label>').join('')||'<small>Sin canchas físicas configuradas.</small>';}
+ function a101TierRow(t={},venueId=0){const type=t.kind||'perCourtHour',val=t.value??'',weekday=t.weekday===undefined||t.weekday===null?'':String(t.weekday);
+  return '<section class="a101-tier" data-a101-tier><div class="a101-tier-head"><strong>Condición por cantidad</strong><button type="button" class="a101-remove" data-a101-remove>Quitar</button></div>'+
+   '<div class="a101-tier-grid">'+
+    '<div class="field"><label>Canchas simultáneas *</label><input type="number" data-a101-courts min="1" max="20" step="1" required value="'+esc(String(t.courts||2))+'"></div>'+
+    '<div class="field"><label>Formato</label><select data-a101-format>'+a101FormatOptions(t.formatId||t.format||'*')+'</select></div>'+
+    '<div class="field a101-span"><label>Condición de precio</label><select data-a101-kind>'+a101Kinds.map(([id,name])=>'<option value="'+id+'" '+(type===id?'selected':'')+'>'+esc(name)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>Importe (S/ o %)</label><input type="number" data-a101-value min="0" max="100000" step="0.01" inputmode="decimal" value="'+esc(String(val))+'" '+(type==='normal'?'':'required')+'></div>'+
+    '<div class="field"><label>Día autorizado</label><select data-a101-weekday>'+a101Weekdays.map(([id,name])=>'<option value="'+id+'" '+(weekday===id?'selected':'')+'>'+name+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>Desde (opcional)</label><input type="time" data-a101-from value="'+esc(t.fromTime||'')+'"></div>'+
+    '<div class="field"><label>Hasta (opcional)</label><input type="time" data-a101-to value="'+esc(t.toTime||'')+'"></div></div>'+
+    '<details><summary>Limitar a canchas físicas (opcional)</summary><div class="a101-courts">'+a101PhysicalOptions(venueId,t.allowedCourtIds)+'</div><small class="a101-hint">Sin selección, la condición aplica a cualquier combinación compatible del mismo formato.</small></details></section>';
+ }
+ function a101ReadTier(row){const val=row.querySelector('[data-a101-value]').value,count=Number(row.querySelector('[data-a101-courts]').value),kind=row.querySelector('[data-a101-kind]').value,
+    formatId=row.querySelector('[data-a101-format]').value,formatItem=a101Formats().find(f=>String(f.id)===formatId),weekday=row.querySelector('[data-a101-weekday]').value,
+    fromTime=row.querySelector('[data-a101-from]').value,toTime=row.querySelector('[data-a101-to]').value;
+  if(!Number.isInteger(count)||count<1||count>20)throw Error('Indica una cantidad válida de canchas simultáneas.');
+  if(!a101Kinds.some(x=>x[0]===kind))throw Error('Selecciona un tipo de condición válido.');
+  if(kind!=='normal'&&(!val||!Number.isFinite(Number(val))||Number(val)<0||(kind==='percent'&&Number(val)>100)))throw Error('Revisa el importe de la condición por canchas.');
+  if(fromTime&&toTime&&fromTime>=(toTime==='00:00'?'24:00':toTime))throw Error('La hora final del acuerdo debe ser posterior a la inicial.');
+  if(formatId!=='*'&&!formatItem)throw Error('Selecciona un formato válido para cada condición.');
+  const allowedCourtIds=[...row.querySelectorAll('[data-a101-court]:checked')].map(x=>Number(x.dataset.a101Court));
+  return {id:row.dataset.a101Id||String(Date.now())+String(Math.random()).slice(2,8),courts:count,formatId,
+   format:formatId==='*'?'*':formatItem.name,kind,value:kind==='normal'?0:Number(val),weekday,fromTime,toTime,allowedCourtIds};
+ }
+ let a101Pending=null;
+ const a101OldSave=save;
+ save=function(action,area){if(a101Pending&&area==='Comercial'&&/^Convenio (creado|actualizado):/.test(String(action))){
+  const p=a101Pending,a=(data.agreements||[]).find(x=>(p.id?String(x.id)===String(p.id):String(x.name)===p.name&&String(x.clientId)===p.clientId&&String(x.venueId)===p.venueId));
+  if(a){a.v101Tiers=p.tiers;a.v101MinMonthlyHours=p.minMonthlyHours;a.v101Storage=p.storage;a.v101UpdatedAt=new Date().toISOString();}
+  a101Pending=null;
+ }return a101OldSave(action,area);};
+ const a101OldAgreementModal=agreementModal;
+ agreementModal=function(id,presetClient){a101Pending=null;a101OldAgreementModal(id,presetClient);
+  const form=document.querySelector('#modalForm'),a=(data.agreements||[]).find(x=>String(x.id)===String(id));if(!form)return;
+  const ruleList=form.querySelector('#v28AgreementRules');if(!ruleList)return;
+  // Native HTML validation happens before submit events. A new tier-only
+  // agreement therefore needs a valid neutral legacy row from the outset.
+  if(!a){const row=ruleList.querySelector('[data-v28-rule]');if(row){
+   const fmt=row.querySelector('[name=formatId]'),typ=row.querySelector('[name=type]'),val=row.querySelector('[name=value]');
+   if(fmt&&!fmt.value)fmt.value=String(a101Formats()[0]?.id||'');
+   if(typ)typ.value='percent';if(val)val.value='0';
+  }}
+  const legacyHeading=ruleList.previousElementSibling,legacyHint=ruleList.nextElementSibling;
+  // Keep the historical rule editors in a collapsible section; they still save normally.
+  const legacy=document.createElement('details');legacy.className='a101-legacy';if(a?.rules?.length&&!a?.v101Tiers?.length)legacy.open=true;
+  legacy.innerHTML='<summary>Descuentos anteriores por formato</summary><p class="a101-hint">Se mantienen para convenios sin reglas por cantidad de canchas. Las nuevas condiciones por cantidad tienen prioridad.</p>';
+  legacyHeading?.before(legacy);if(legacyHeading)legacy.append(legacyHeading);legacy.append(ruleList);if(legacyHint)legacy.append(legacyHint);
+  const previousMinimum=a?Number(v54Policy({kind:'agreement',source:a})?.minHoursMonthly)||Number(v86FrequencyRule(a,v54Policy({kind:'agreement',source:a})).minimum)||0:0;
+  const section=document.createElement('section');section.className='a101-section';section.innerHTML=
+   '<h3>Precio según cantidad de canchas</h3><p>Configura una condición para 1, 2, 3 o más canchas simultáneas. Si ninguna coincide, se cobra la tarifa oficial. Funciona en reservas únicas y programaciones.</p>'+
+   '<div id="a101-tier-list"></div><button type="button" class="a101-add" id="a101-add">+ Añadir condición</button>'+
+   '<div class="formgrid" style="margin-top:13px"><div class="field"><label>Mínimo de horas-cancha al mes (opcional)</label><input id="a101-minimum" type="number" min="0" max="5000" step="0.5" value="'+esc(String(a?.v101MinMonthlyHours??previousMinimum))+'"></div></div>'+
+   '<div class="field" style="margin-top:11px"><label>Beneficio adicional: uso de almacén (opcional)</label><input id="a101-storage" maxlength="180" value="'+esc(a?.v101Storage||'')+'" placeholder="Ej. Almacén de materiales deportivos"></div>'+
+   '<div class="a101-note">El uso de almacén no descuenta dinero. Los precios del acuerdo se evalúan por fecha, sede, formato y canchas físicas; los cobros anteriores no se modifican.</div>';
+  legacy.before(section);const list=section.querySelector('#a101-tier-list');const venue=form.querySelector('[name=venueId]');
+  (a?.v101Tiers||[]).forEach(t=>list.insertAdjacentHTML('beforeend',a101TierRow(t,Number(venue?.value||a?.venueId))));
+  section.querySelector('#a101-add').addEventListener('click',()=>list.insertAdjacentHTML('beforeend',a101TierRow({},Number(venue?.value))));
+  list.addEventListener('click',ev=>{if(ev.target.closest('[data-a101-remove]'))ev.target.closest('[data-a101-tier]').remove();});
+  list.addEventListener('change',ev=>{if(ev.target.matches('[data-a101-kind]')){const row=ev.target.closest('[data-a101-tier]'),input=row.querySelector('[data-a101-value]');input.required=ev.target.value!=='normal';if(ev.target.value==='normal')input.value='0';}});
+  const refreshCourts=()=>list.querySelectorAll('[data-a101-tier]').forEach(row=>{const selected=[...row.querySelectorAll('[data-a101-court]:checked')].map(x=>Number(x.dataset.a101Court));row.querySelector('.a101-courts').innerHTML=a101PhysicalOptions(Number(venue?.value),selected);});
+  venue?.addEventListener('change',refreshCourts);
+  // The original editor requires at least one legacy format. A neutral 0% line
+  // allows genuinely new agreements to use exclusively the tier rules.
+  form.addEventListener('submit',ev=>{
+   try{
+    const tiers=[...list.querySelectorAll('[data-a101-tier]')].map(a101ReadTier),seen=new Set();
+    for(const t of tiers){const key=[t.courts,t.formatId,t.weekday,t.fromTime,t.toTime,t.allowedCourtIds.sort((a,b)=>a-b).join(',')].join('|');if(seen.has(key))throw Error('Hay dos condiciones idénticas. Ajusta el formato, la cantidad o el horario.');seen.add(key);}
+    const minimum=Number(section.querySelector('#a101-minimum').value||0);if(!Number.isFinite(minimum)||minimum<0||minimum>5000)throw Error('Revisa el mínimo mensual de horas-cancha.');
+    if(tiers.length&&!a){const first=ruleList.querySelector('[data-v28-rule]')||null;
+      if(!first&&window.V28?.addAgreementRule)window.V28.addAgreementRule();
+      const row=ruleList.querySelector('[data-v28-rule]');if(row){const fmt=row.querySelector('[name=formatId]'),typ=row.querySelector('[name=type]'),value=row.querySelector('[name=value]');if(fmt&&!fmt.value)fmt.value=String(a101Formats()[0]?.id||'');if(typ&&!value.value){typ.value='percent';value.value='0';}}
+    }
+    a101Pending={id:a?.id||null,clientId:String(form.querySelector('[name=clientId]')?.value),venueId:String(venue?.value),name:a101Clean(form.querySelector('[name=name]')?.value),tiers,minMonthlyHours:minimum,storage:a101Clean(section.querySelector('#a101-storage').value)};
+   }catch(err){a101Pending=null;ev.preventDefault();ev.stopImmediatePropagation();toast(err.message||'Revisa las condiciones del acuerdo.');}
+  },true);
+ };
+ // Keep the admin listing, adding only a discreet summary under each agreement.
+ const a101OldRender=render;
+ render=function(...args){const result=a101OldRender(...args);
+  if(role()==='admin'&&page==='agreements'){document.querySelectorAll('.v28-agreement-item').forEach((card,i)=>{
+    const a=(data.agreements||[])[i];if(!a?.v101Tiers?.length&&!a?.v101Storage)return;
+    const tags=card.querySelector('.v28-tags');
+    if(tags&&a.v101Tiers?.length){tags.innerHTML=a.v101Tiers.map(t=>{
+     const name=t.courts+' '+(Number(t.courts)===1?'cancha':'canchas'),suffix=t.kind==='normal'?'tarifa normal':t.kind==='perCourtHour'?fmt(t.value)+' por cancha/h':t.kind==='totalHour'?fmt(t.value)+' grupo/h':t.kind==='percent'?t.value+'% de descuento':fmt(t.value)+' de desc./cancha/h';
+     return '<span class="v28-tag">'+esc((t.format&&t.format!=='*'?t.format+' · ':'')+name+' · '+suffix)+'</span>';}).join('');}
+    const p=document.createElement('p');p.className='a101-card-extra';p.textContent=(a.v101Tiers?.length?a.v101Tiers.length+' condiciones por cantidad':'')+(a.v101Storage?' · Almacén autorizado':'');
+    const button=card.querySelector('button');button?.before(p);
+  });}return result;
+ };
+ const a101OldWorkerRender=workerRender;
+ workerRender=function(...args){const result=a101OldWorkerRender(...args);if(!shadow)return result;
+  if(!shadow.getElementById('a101-agreements-style')){const st=document.createElement('style');st.id='a101-agreements-style';st.textContent=A101_CSS;shadow.prepend(st);}
+  if(w.modal==='newRental'||w.modal==='newQuote'){
+   const d=w.draft,field=shadow.getElementById('w-customer')?.closest('.field');if(d&&field){const possible=(data.agreements||[]).filter(a=>a.status==='Vigente'&&v102Applies(a,d.customerId)&&String(a.venueId)===String(d.venueId)&&v54LiveLink(a,d.date));
+    if(possible.length){const note=document.createElement('div');note.className='a101-worker-note';note.textContent=possible.length===1?'Acuerdo vigente: '+possible[0].name+(possible[0].v101Storage?' · Almacén autorizado':''):possible.length+' acuerdos vigentes · revisa el beneficio del resumen de precio.';field.insertAdjacentElement('afterend',note);}
+   }
+  }return result;
+ };
+ window.ElevaAcuerdos={evaluate:(d,row,base,allRows)=>v54Eligible(d,row,base,allRows),countCourts:(d,row)=>a101CourtIds(row,d).length,autoSeries:a101AutoSeries};
+/* Eleva Sport: acuerdos compartidos y vinculacion por cliente. Mantiene calculos existentes. */
+ const A102_CSS=`
+ .a102-audience{border:1px solid #dce9e3;border-radius:13px;background:#f8fbf9;padding:13px 14px;margin:3px 0 17px}
+ .a102-audience h3{font-size:13px;font-weight:800;color:#12232d;margin:0 0 9px}
+ .a102-scopes{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px}
+ .a102-scopes label{display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer;border-radius:9px;border:1px solid #d6e4dc;background:#fff;padding:10px;font-size:11px;flex:1;min-width:100px;color:#36554b;font-weight:730;line-height:1.3}
+ .a102-scopes label:has(input:checked){background:#12232d;color:#fff;border-color:#12232d}
+ .a102-scopes input{width:15px;height:15px;flex:none;accent-color:#00e64d}
+ .a102-clients{border-top:1px solid #e3ebe7;padding-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:200px;overflow:auto}
+ .a102-clients label{display:flex;align-items:center;gap:8px;border:1px solid #e1e9e4;background:#fff;border-radius:9px;padding:9px 10px;font-size:11px;line-height:1.4;min-width:0;color:#345448;cursor:pointer;overflow-wrap:anywhere}
+ .a102-clients label:has(input:checked){border-color:#68bb82;background:#effaf2}
+ .a102-clients input{accent-color:#16854b;width:16px;height:16px;flex:none}
+ .a102-explain{font-size:11px;line-height:1.5;color:#57736a;margin:7px 0 0}
+ .a102-all-confirm{display:flex;gap:9px;align-items:flex-start;margin-top:11px;font-size:11px;color:#365b4b}
+ .a102-all-confirm input{width:17px;height:17px;accent-color:#16854b;flex:none}
+ .a102-client-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+ .a102-client-actions .btn{font-size:11px}
+ .a102-link-choice{width:100%;min-width:0}
+ @media(max-width:580px){.a102-clients{grid-template-columns:1fr}.a102-scopes label{min-width:0;flex:1 1 100%;justify-content:flex-start}}
+ `;
+ const a102Style=document.createElement('style');a102Style.id='eleva-a102-styles';a102Style.textContent=A102_CSS;document.head.appendChild(a102Style);
+ const v102Scope=a=>a?.v102Audience==='selected'?'selected':a?.v102Audience==='all'?'all':'one';
+ function v102MemberIds(a){const owner=Number(a?.clientId),ids=v102Scope(a)==='selected'&&Array.isArray(a.v102ClientIds)?a.v102ClientIds:[owner];return [...new Set(ids.map(Number).filter(n=>Number.isSafeInteger(n)&&n>0))];}
+ function v102Applies(a,clientId){const id=Number(clientId);if(!id||!a||!(data.customers||[]).some(c=>Number(c.id)===id&&valid(c)))return false;const scope=v102Scope(a);return scope==='all'||(scope==='selected'?v102MemberIds(a).includes(id):Number(a.clientId)===id);}
+ function v102AudienceLabel(a){const type=v102Scope(a);if(type==='all')return 'Todos los clientes elegibles';if(type==='selected')return v102MemberIds(a).length+' clientes vinculados';return clientName(a.clientId);}
+ // All commercial agreement options remain individually selectable by an authorized operator.
+ const v102EarlierOffers=v54Offers;
+ v54Offers=function(d){const result=v102EarlierOffers(d).filter(o=>o.kind!=='agreement');const customerId=Number(d.customerId),venueId=Number(d.venueId);
+  for(const a of data.agreements||[]){if(a.status!=='Vigente'||Number(a.venueId)!==venueId||!v102Applies(a,customerId)||!v86Overlaps(a,d))continue;
+   result.push({id:'agreement:'+a.id,name:'Acuerdo · '+a.name,kind:'agreement',source:a,configured:true});}
+  return result;
+ };
+ // Tier-based agreements use the actual client for hours-cancha calculations.
+ // For older per-format agreements, only the legacy ownership check is normalized.
+ const v102EarlierEligible=v54Eligible;
+ v54Eligible=function(d,row,base,allRows){const m=String(d?.discountId||'').match(/^agreement:(\d+)$/);if(!m)return v102EarlierEligible(d,row,base,allRows);
+  const a=(data.agreements||[]).find(x=>String(x.id)===m[1]);if(!a||!v102Applies(a,d.customerId)||a.status!=='Vigente'||Number(a.venueId)!==Number(d.venueId))return {amount:0,label:'Acuerdo no vinculado a este cliente o sede',kind:'none'};
+  return v102EarlierEligible(a.v101Tiers?.length?d:{...d,customerId:a.clientId},row,base,allRows);
+ };
+ const v102Priority=o=>o.kind!=='agreement'?0:v102Scope(o.source)==='one'?300:v102Scope(o.source)==='selected'?200:100;
+ function v102ChooseSingle(eligible,d,row,base){const options=eligible.map(o=>({o,score:v102Priority(o),benefit:v54Eligible({...d,discountId:o.id},row,base,[row])})).filter(x=>!x.benefit.requiresConfig&&Number(x.benefit.amount)>0);
+  options.sort((a,b)=>b.score-a.score||Number(b.benefit.amount)-Number(a.benefit.amount)||String(a.o.id).localeCompare(String(b.o.id)));
+  return options[0]?.o||null;
+ }
+ function v102ChooseSeries(d){const offers=v54Offers(d).filter(x=>x.kind==='agreement');if(!offers.length)return null;
+  // Once dates exist, choose only among agreements that actually reduce a valid date.
+  // Recurrent dates are always evaluated separately; no financial conditions stack.
+  if(d.rows?.length){const eligible=[];
+   for(const o of offers){try{const preview=v54Preview({...d,discountId:o.id});if(Number(preview.discount)>0.005)eligible.push({o,discount:preview.discount});}catch(_){}}
+   eligible.sort((a,b)=>v102Priority(b.o)-v102Priority(a.o)||Number(b.discount)-Number(a.discount)||String(a.o.id).localeCompare(String(b.o.id)));
+   return eligible[0]?.o||null;
+  }
+  offers.sort((a,b)=>v102Priority(b)-v102Priority(a)||String(a.id).localeCompare(String(b.id)));return offers[0];
+ }
+ // Only one financial condition is active per booking; no stacking of commercial discounts.
+ const v102EarlierAgreementModal=agreementModal;
+ let v102Pending=null;
+ agreementModal=function(id,presetClient){v102Pending=null;v102EarlierAgreementModal(id,presetClient);
+  const form=document.querySelector('#modalForm'),a=(data.agreements||[]).find(x=>String(x.id)===String(id)),select=form?.querySelector('[name=clientId]');if(!select)return;
+  const allCustomers=(data.customers||[]).filter(c=>valid(c)||v102MemberIds(a).includes(Number(c.id)));
+  const field=select.closest('.field');const scope=v102Scope(a),members=new Set(v102MemberIds(a));
+  const box=document.createElement('section');box.className='a102-audience';box.innerHTML=
+    '<h3>Aplicar condición comercial a</h3><div class="a102-scopes">'+
+    [['one','Un cliente'],['selected','Varios clientes'],['all','Todos los elegibles']].map(([val,label])=>'<label><input type="radio" name="a102-scope" value="'+val+'" '+(val===scope?'checked':'')+'>'+label+'</label>').join('')+'</div>'+
+    '<p class="a102-explain">Prioridad si coinciden condiciones: cliente específico, varios clientes y alcance general. Los descuentos no se acumulan.</p><div class="a102-members" hidden><p class="a102-explain">Selecciona los clientes que comparten estas mismas condiciones. No se crean copias del acuerdo.</p><div class="a102-clients">'+allCustomers.map(c=>'<label><input type="checkbox" data-a102-member value="'+esc(c.id)+'" '+(members.has(Number(c.id))?'checked':'')+'><span>'+esc(c.name)+'</span></label>').join('')+'</div></div>'+
+    '<div class="a102-global" hidden><p class="a102-explain">Se aplicará a los clientes elegibles de esta sede que cumplan las fechas, horarios y condiciones de precio.</p><label class="a102-all-confirm"><input type="checkbox" id="a102-confirm" '+(scope==='all'?'checked':'')+'>Confirmo el alcance general de esta condición</label></div>';
+  field.before(box);
+  const multi=box.querySelector('.a102-members'),global=box.querySelector('.a102-global');
+  function scopeNow(){return box.querySelector('[name=a102-scope]:checked')?.value||'one';}
+  function refresh(){const type=scopeNow();field.hidden=type!=='one';field.style.display=type==='one'?'':'none';multi.hidden=type!=='selected';global.hidden=type!=='all';}
+  box.addEventListener('change',ev=>{if(ev.target.name==='a102-scope')refresh();});refresh();
+  const modalTitle=document.querySelector('#overlay .modalhead h2');if(modalTitle)modalTitle.textContent=a?'Editar acuerdo comercial':'Nuevo acuerdo comercial';
+  const modalDesc=document.querySelector('#overlay .modaldesc');if(modalDesc)modalDesc.textContent='Condiciones comerciales y tarifas para los clientes seleccionados.';
+  const titleLabel=form.querySelector('[name=name]')?.closest('.field')?.querySelector('label');if(titleLabel)titleLabel.textContent='Nombre del acuerdo';
+  form.addEventListener('submit',ev=>{try{
+   const type=scopeNow();let ids=[];
+   if(type==='one')ids=[Number(select.value)];
+   if(type==='selected')ids=[...box.querySelectorAll('[data-a102-member]:checked')].map(x=>Number(x.value));
+   if(type==='selected'&&ids.length<2)throw Error('Selecciona al menos dos clientes para compartir el acuerdo.');
+   if(type==='all'&&!box.querySelector('#a102-confirm').checked)throw Error('Confirma que este acuerdo será general para la sede.');
+   if(!['one','selected','all'].includes(type))throw Error('Selecciona a quién se aplica el acuerdo.');
+   if(type==='selected')select.value=String(ids[0]);
+   if(a101Pending)a101Pending.clientId=String(select.value);
+   if(type==='one'&&!ids[0])throw Error('Selecciona un cliente activo.');
+   v102Pending={id:a?.id??null,name:form.querySelector('[name=name]')?.value.trim(),clientId:Number(select.value),venueId:Number(form.querySelector('[name=venueId]')?.value),scope:type,ids};
+  }catch(err){v102Pending=null;ev.preventDefault();ev.stopImmediatePropagation();toast(err.message||'Revisa los clientes del acuerdo.');}},true);
+ };
+ const v102EarlierSave=save;
+ save=function(action,area){if(v102Pending&&area==='Comercial'&&/^Convenio (creado|actualizado):/.test(String(action))){const p=v102Pending;
+  const a=(data.agreements||[]).find(x=>p.id?String(x.id)===String(p.id):String(x.name)===p.name&&Number(x.clientId)===p.clientId&&Number(x.venueId)===p.venueId);
+  if(a){a.v102Audience=p.scope;a.v102ClientIds=p.scope==='selected'?[...p.ids]:p.scope==='one'?[p.clientId]:[];a.v102UpdatedAt=new Date().toISOString();}
+  v102Pending=null;
+ }
+  return v102EarlierSave(action,area);
+ };
+ // In a client record an administrator can link a previously created condition.
+ function v102OpenLink(clientId){if(role()!=='admin')return;
+  const c=(data.customers||[]).find(x=>Number(x.id)===Number(clientId));if(!c)return toast('Cliente no encontrado');
+  const available=(data.agreements||[]).filter(a=>a.status==='Vigente'&&v102Scope(a)!=='all'&&!v102Applies(a,clientId));
+  if(!available.length)return toast('No hay acuerdos vigentes pendientes de vincular.');
+  const choices=available.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name+' · '+venueName(a.venueId))+'</option>').join('');
+  modal('Vincular acuerdo existente','Selecciona una condición creada en Administración para compartirla con este cliente.',
+   '<div class="field"><label>Acuerdo disponible</label><select name="agreementId" class="a102-link-choice" required>'+choices+'</select></div><p class="a102-explain">Se conservarán sus reglas y su vigencia. Las reservas anteriores no cambiarán.</p>',(f)=>{
+    const a=(data.agreements||[]).find(x=>String(x.id)===String(f.get('agreementId')));if(!a||a.status!=='Vigente'||v102Scope(a)==='all'||v102Applies(a,clientId))return toast('El acuerdo ya no está disponible.');
+    const ids=[...new Set([...v102MemberIds(a),Number(clientId)])];a.v102Audience='selected';a.v102ClientIds=ids;a.v102UpdatedAt=new Date().toISOString();
+    closeModal();save('Acuerdo vinculado a '+c.name,'Comercial');
+   },'Vincular acuerdo');
+ }
+ // Correct the admin cards' audience labels; never show only the owner for shared rules.
+ const v102EarlierRender=render;
+ render=function(...args){const result=v102EarlierRender(...args);if(role()==='admin'&&page==='agreements'){
+   const titleNode=document.querySelector('#content h1');if(titleNode&&/Convenios y descuentos/i.test(titleNode.textContent))titleNode.textContent='Acuerdos y beneficios';
+   document.querySelectorAll('.v28-agreement-item').forEach((card,i)=>{const a=(data.agreements||[])[i];if(!a)return;const pp=card.querySelector('p');if(pp)pp.textContent=v102AudienceLabel(a)+' · '+venueName(a.venueId);
+    const button=card.querySelector('button');if(button&&button.textContent.includes('convenio'))button.textContent='Editar acuerdo';});
+   const mainButton=document.querySelector('#content .page-head button, #content .title-row button');if(mainButton&&/Nuevo convenio/.test(mainButton.textContent))mainButton.textContent='Nuevo acuerdo';
+  }return result;};
+ window.V102={matches:v102Applies,scope:v102Scope,members:v102MemberIds,audienceLabel:v102AudienceLabel,openLink:v102OpenLink,chooseSingle:v102ChooseSingle,chooseSeries:v102ChooseSeries,
+  // Introspection is read-only; no mutation of financial operations outside admin actions.
+  applicable:(clientId,venueId)=>v54Offers({customerId:clientId,venueId,start:day(),end:day()}).filter(x=>x.kind==='agreement').map(x=>({id:x.id,name:x.source.name,audience:v102AudienceLabel(x.source)}))};
+
+}
+
+
+/* ELEVA SPORT | Correcciones delimitadas:
+   1. Calendario mensual usa exactamente la misma seleccion visible de la Agenda.
+   2. Aviso previo al arqueo cuando quedan reservas comerciales de la jornada sin finalizar.
+   No altera pagos, reservas historicas, acciones Jugó ni cierres definitivos. */
+const V103_CSS=`
+.v103-warn-summary{display:flex;align-items:start;gap:10px;border-radius:13px;padding:13px 14px;background:#fff7e9;border:1px solid #f1dfb9;color:#594422;margin:0 0 14px}
+.v103-warn-summary .i{color:#99620a;flex:none;width:19px;height:19px;margin-top:2px}
+.v103-warn-summary strong{font-size:13px;color:#503914;display:block;margin:0 0 4px}
+.v103-warn-summary p{font-size:12px;line-height:1.55;margin:0}
+.v103-warn-bookings{display:grid;gap:8px}
+.v103-warn-booking{padding:11px 12px;border:1px solid #e4ebe8;border-radius:11px;background:white;display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.v103-warn-booking>div{min-width:0;display:grid;gap:5px}
+.v103-warn-booking b{font-size:12px;color:#12232d;overflow:hidden;text-overflow:ellipsis}
+.v103-warn-booking small{font-size:10px;color:#667b82;line-height:1.45}
+.v103-warn-booking em{font-style:normal;background:#eff3f1;color:#516a60;border-radius:99px;padding:6px 8px;font-size:10px;font-weight:750;white-space:nowrap}
+.v103-warn-hint{font-size:11px;color:#687c82;line-height:1.6;margin:14px 0 0}
+`;
+function v103RentalWindow(r){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(String(r?.date||'')))return null;
+ const snap=getSnap(r)||{},startClock=String(r.startTime||snap.startTime||'');
+ if(!/^\d{2}:\d{2}$/.test(startClock))return null;
+ const start=Date.parse(r.date+'T'+startClock+':00-05:00');if(!Number.isFinite(start))return null;
+ let end=start+Math.max(1,Number(snap.duration??r.duration)||1)*60000;
+ const endClock=String(snap.endTime||r.endTime||'');
+ if(/^\d{2}:\d{2}$/.test(endClock)){
+  const clockEnd=Date.parse(r.date+'T'+endClock+':00-05:00');
+  if(Number.isFinite(clockEnd))end=clockEnd<=start?clockEnd+86400000:clockEnd;
+ }
+ return {start,end};
+}
+function v103PendingForSession(s){
+ if(!s||!v89Desk())return [];
+ const bounds=v98ShiftBounds(s),todayLocal=v89DateParts(now())?.day||day();
+ return (data.v48RentalOps||[]).filter(r=>{
+  if(Number(r.venueId)!==Number(s.venueId)||!allowed(current(),r.venueId))return false;
+  if(r.status!=='Confirmada'||v100Completed(r))return false;
+  if(!['pending','arrived','in_progress'].includes(v100Use(r)))return false;
+  const interval=v103RentalWindow(r);
+  if(bounds)return !!interval&&interval.start<bounds.end&&interval.end>bounds.start;
+  return String(r.date)===todayLocal;
+ }).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.startTime||'').localeCompare(String(b.startTime||'')));
+}
+// Compute monthly counts with the exact active Agenda data source, including internal
+// uses where they appear. Preserve the selected day in a finally block.
+function v103ActiveDayEntries(iso){
+ const previousDate=w.date;
+ try{w.date=iso;return v87Daily();}
+ finally{w.date=previousDate;}
+}
+const v103BaseCalendarHTML=v87CalendarHTML;
+v87CalendarHTML=function(){
+ const wrapper=document.createElement('div');wrapper.innerHTML=v103BaseCalendarHTML();
+ wrapper.querySelectorAll('[data-v87="calendarDay"]').forEach(btn=>{
+  const iso=btn.dataset.date,entries=v103ActiveDayEntries(iso),count=entries.length;
+  const previousIndicator=btn.querySelector('em');if(previousIndicator)previousIndicator.remove();
+  if(count){const indicator=document.createElement('em');indicator.textContent='● '+count;btn.appendChild(indicator);}
+  const onlyRentals=entries.every(x=>x.type==='rental');
+  const label=onlyRentals?(count===1?'reserva activa':'reservas activas'):(count===1?'ocupación activa':'ocupaciones activas');
+  btn.setAttribute('aria-label',asDate(iso)+(count?' · '+count+' '+label:''));
+ });
+ return wrapper.innerHTML;
+};
+function v103CloseWarningModal(){
+ const s=session(),pending=v103PendingForSession(s);
+ const description='<div class="v103-warn-summary">'+ico('alert','sm')+'<div><strong>'+pending.length+' '+(pending.length===1?'reserva pendiente':'reservas pendientes')+'</strong><p>Hay '+(pending.length===1?'una reserva programada':'reservas programadas')+' para este turno sin atención finalizada.</p></div></div>';
+ const rows=pending.slice(0,4).map(r=>{
+  const snap=getSnap(r)||{},finish=snap.endTime||r.endTime||'',status=v100Use(r),statusLabel=status==='arrived'?'Llegó':status==='in_progress'?'En cancha':'Pendiente';
+  const place=(Array.isArray(r.resourceIds)&&r.resourceIds.length?r.resourceIds:[r.resourceId]).map(id=>resource(id)?.name||'Cancha').join(' + ');
+  const cname=client(r.customerId)?.name||'Cliente';
+  return '<div class="v103-warn-booking"><div><b>'+esc(cname)+'</b><small>'+esc(r.code)+' · '+esc(asDate(r.date))+' · '+esc(r.startTime)+(finish?'–'+esc(finish):'')+' · '+esc(place)+'</small></div><em>'+esc(statusLabel)+'</em></div>';
+ }).join('');
+ const more=pending.length>4?'<p class="v103-warn-hint">Y '+(pending.length-4)+' reservas más pendientes.</p>':'';
+ const footer=actionButton('Revisar reservas','v103ReviewPending','secondary')+actionButton('Continuar al cierre','v103ProceedClose','green');
+ return modalShell('CIERRE DE TURNO','Reservas sin finalizar',description+'<div class="v103-warn-bookings">'+rows+'</div>'+more+
+  '<p class="v103-warn-hint">Si hay relevo, puedes continuar. Cerrar el turno no marca automáticamente «Jugó» ni «No asistió», no cancela reservas y no modifica cobros.</p>',footer,'v52-detail-sheet');
+}
+const v103BaseModalView=modalView;
+modalView=function(){if(v89Desk()&&w.modal==='v103CloseWarning')return v103CloseWarningModal();return v103BaseModalView();};
+const v103BaseWorkClick=onWorkClick;
+onWorkClick=function(e){
+ const b=e.target?.closest?.('[data-action]'),action=b?.dataset.action||'';
+ if(v89Desk()&&session()){
+  if(action==='closeCash'){
+   const pending=v103PendingForSession(session());
+   if(pending.length){e.preventDefault();w.modal='v103CloseWarning';w.modalId=null;workerRender();return;}
+  }
+  if(action==='v103ProceedClose'&&w.modal==='v103CloseWarning'){
+   e.preventDefault();w.v57ClosingStep=1;w.v57CountDraft='';w.v57NoteDraft='';w.v57PhysicalDraft=false;
+   openWorkerModal('closeCash');return;
+  }
+  if(action==='v103ReviewPending'&&w.modal==='v103CloseWarning'){
+   e.preventDefault();const pending=v103PendingForSession(session());
+   w.modal=null;w.modalId=null;w.page='reservations';w.resView='agenda';w.search='';w.v87CourtId='';
+   if(pending[0]?.date)w.date=pending[0].date;
+   workerRender();return;
+  }
+ }
+ return v103BaseWorkClick(e);
+};
+const v103BaseRender=workerRender;
+workerRender=function(...args){const result=v103BaseRender(...args);if(shadow&&!shadow.getElementById('v103-close-warning-style')){
+ const style=document.createElement('style');style.id='v103-close-warning-style';style.textContent=V103_CSS;shadow.appendChild(style);
+ }return result;};
 
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
