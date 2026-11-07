@@ -18668,7 +18668,7 @@ cancel=function(id,reason){
  persistAll();}return out;};
 
 const v84PrevNav=nav;
-nav=function(){return [['reservations','Reservas','calendar'],['v84Receipts','Recibos','receipt'],['cash','Caja','wallet'],['more','Más','grid']]};
+nav=function(){return [['reservations','Agenda','calendar'],['v84Receipts','Recibos','receipt'],['cash','Mi caja','wallet'],['more','Más','grid']]};
 // A native v55 mobile-nav wrapper appends a More item. The new primary nav already includes it.
 navHtml=function(horizontal=false){return nav().map(([id,name,ic])=>horizontal?'<button class="side-nav '+(w.page===id?'active':'')+'" data-action="page" data-target="'+id+'">'+ico(ic)+' '+esc(name)+'</button>':'<button type="button" class="'+(w.page===id?'active':'')+'" data-action="page" data-target="'+id+'" aria-label="'+esc(name)+'">'+ico(ic)+'<span>'+esc(name)+'</span></button>').join('')};
 // Desktop has a legacy secondary More shortcut that is redundant with the primary menu.
@@ -21454,10 +21454,10 @@ v100BindSwipes=function(){
   card.addEventListener('touchstart',ev=>{if(ev.touches.length===1)begin(ev.touches[0].clientX,ev.touches[0].clientY);},{passive:true});
   card.addEventListener('touchmove',ev=>{if(ev.touches.length===1)move(ev.touches[0].clientX,ev.touches[0].clientY,ev);},{passive:false});
   card.addEventListener('touchend',finish,{passive:true});card.addEventListener('touchcancel',cancel,{passive:true});
-  card.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse'&&ev.button===0){begin(ev.clientX,ev.clientY);try{card.setPointerCapture(ev.pointerId);}catch(_){}}});
-  card.addEventListener('pointermove',ev=>{if(ev.pointerType==='mouse')move(ev.clientX,ev.clientY,ev);});
-  card.addEventListener('pointerup',ev=>{if(ev.pointerType==='mouse')finish();});
-  card.addEventListener('pointercancel',ev=>{if(ev.pointerType==='mouse')cancel();});
+  card.addEventListener('pointerdown',ev=>{if(ev.pointerType==='pen'&&ev.button===0){begin(ev.clientX,ev.clientY);try{card.setPointerCapture(ev.pointerId);}catch(_){}}});
+  card.addEventListener('pointermove',ev=>{if(ev.pointerType==='pen')move(ev.clientX,ev.clientY,ev);});
+  card.addEventListener('pointerup',ev=>{if(ev.pointerType==='pen')finish();});
+  card.addEventListener('pointercancel',ev=>{if(ev.pointerType==='pen')cancel();});
   shell.addEventListener('click',ev=>{if(ev.target.closest('.v100-swipe-action'))return;
    if(Date.now()<Number(shell.dataset.v100SuppressUntil||0)){ev.preventDefault();ev.stopImmediatePropagation();}
   },true);
@@ -21588,11 +21588,6 @@ modalView=function(){if(w.modal==='v106QuoteWizard')return v106QuoteModal();retu
 const v106OldWorkerRender=workerRender;
 workerRender=function(...args){const value=v106OldWorkerRender(...args);if(!shadow)return value;
  v106InstallCss();
- const nav=shadow.querySelector('#v51-worker-app .bottom-nav');
- if(nav&&!nav.querySelector('[data-action="v104PageQuotes"]')){
-  const link=document.createElement('button');link.type='button';link.dataset.action='v104PageQuotes';link.className='v106-quote-tab'+(w.page==='quotes'?' active':'');
-  link.innerHTML=ico('file','sm')+'<span>Cotizar</span>';const more=nav.querySelector('[data-target="more"]');if(more)more.before(link);else nav.appendChild(link);
- }
  if(w.page==='reservations'&&w.resView==='agenda'&&!w.modal){v106UpdateSwipeLabels();v100BindSwipes();}
  return value;
 };
@@ -21633,6 +21628,77 @@ if(typeof document!=='undefined')document.addEventListener('visibilitychange',()
 if(typeof window!=='undefined')window.addEventListener('focus',()=>{v106UpdateSwipeLabels();});
 window.ElevaAgendaSwipe.canSwipe=id=>v106Ready(get(data.v48RentalOps,id));
 window.ElevaAgendaSwipe.canComplete=id=>v105CanComplete(get(data.v48RentalOps,id));
+
+
+/* Agenda: contextual desktop action. Keep the original card and its financial column untouched. */
+const V108_HOVER_CSS=`
+#v51-worker-app .v100-swipe-shell > .v108-hover-jugo[hidden]{display:none!important}
+#v51-worker-app .v100-swipe-shell > .v108-hover-jugo{display:none!important}
+@media(min-width:841px) and (hover:hover) and (pointer:fine){
+ #v51-worker-app .v100-swipe-shell.v108-can-play > .v108-hover-jugo:not([hidden]){
+  position:absolute;z-index:5;top:50%;right:var(--v108-action-right,140px);
+  transform:translateY(-50%);display:inline-flex!important;align-items:center;justify-content:center;
+  gap:5px;min-height:31px;padding:6px 11px;white-space:nowrap;
+  border:1px solid #bfe6cc;border-radius:9px;background:#e9f8ee;color:#166b43;
+  font:750 11px/1.2 Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+  box-shadow:0 2px 8px #12232d0b;cursor:pointer;
+  opacity:0;visibility:hidden;pointer-events:none;transition:opacity .14s ease,background .14s ease;
+ }
+ #v51-worker-app .v100-swipe-shell.v108-can-play:hover > .v108-hover-jugo,
+ #v51-worker-app .v100-swipe-shell.v108-can-play:focus-within > .v108-hover-jugo{
+  opacity:1;visibility:visible;pointer-events:auto;
+ }
+ #v51-worker-app .v100-swipe-shell.v108-can-play > .v108-hover-jugo:hover{background:#d9f3e3;border-color:#a6dab6}
+ #v51-worker-app .v100-swipe-shell > .v108-hover-jugo svg{width:14px;height:14px}
+ #v51-worker-app .v100-swipe-shell > .v108-hover-jugo:focus-visible{outline:3px solid #00ae52;outline-offset:2px}
+}
+@media(prefers-reduced-motion:reduce){#v51-worker-app .v100-swipe-shell > .v108-hover-jugo{transition:none!important}}
+`;
+function v108InstallHoverStyle(){
+ if(!shadow||shadow.getElementById('v108-hover-jugo-style'))return;
+ const st=document.createElement('style');st.id='v108-hover-jugo-style';st.textContent=V108_HOVER_CSS;shadow.appendChild(st);
+}
+function v108PlaceHoverButton(shell,button){
+ const card=shell.querySelector(':scope > .v52-booking-card');
+ const finance=card?.querySelector('.v52-booking-pills');
+ if(!card||!finance)return;
+ // Calculate the actual occupied financial area; do not guess the balance width.
+ const shellRect=shell.getBoundingClientRect();const balanceRect=finance.getBoundingClientRect();
+ const right=Math.max(12,Math.ceil(shellRect.right-balanceRect.left+9));
+ button.style.right=right+'px';
+ // Never cover names on an unusually narrow desktop view.
+ const name=card.querySelector('.v52-booking-main');
+ if(name){const nameRect=name.getBoundingClientRect();
+   const buttonLeft=shellRect.right-right-83;
+   button.hidden=buttonLeft<nameRect.left+155;
+ }
+}
+function v108SyncHoverButtons(){
+ if(!shadow||!v89Desk()||w.page!=='reservations'||w.resView!=='agenda'||w.modal)return;
+ v108InstallHoverStyle();
+ shadow.querySelectorAll('.v100-swipe-shell[data-v100-id]').forEach(shell=>{
+  const r=get(data.v48RentalOps,shell.dataset.v100Id);
+  const enabled=v105CanComplete(r);
+  shell.classList.toggle('v108-can-play',enabled);
+  let button=shell.querySelector(':scope > .v108-hover-jugo');
+  if(!enabled){if(button)button.remove();return;}
+  if(!button){
+   button=document.createElement('button');button.type='button';button.className='v108-hover-jugo';
+   button.dataset.action='v100Play';button.dataset.id=String(r.id);
+   button.setAttribute('aria-label','Marcar partido como jugado');
+   button.innerHTML=ico('checkcircle','sm')+'<span>Jug\u00f3</span>';
+   shell.appendChild(button);
+  }
+  button.hidden=false;v108PlaceHoverButton(shell,button);
+ });
+}
+// The existing end-of-match timer calls this updater, so the hover action becomes
+// available without reloading the Agenda or moving the booking card.
+const v108OldUpdateSwipeLabels=v106UpdateSwipeLabels;
+v106UpdateSwipeLabels=function(...args){const value=v108OldUpdateSwipeLabels(...args);v108SyncHoverButtons();return value;};
+const v108OldWorkerRender=workerRender;
+workerRender=function(...args){const value=v108OldWorkerRender(...args);v108SyncHoverButtons();return value;};
+if(typeof window!=='undefined')window.addEventListener('resize',()=>v108SyncHoverButtons(),{passive:true});
 
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
