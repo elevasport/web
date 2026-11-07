@@ -20569,11 +20569,16 @@ const V100_SWIPES_CSS=`
 @media(prefers-reduced-motion:reduce){#v51-worker-app .v100-swipe-shell>.v52-booking-card{transition:none}}
 `;
 function v100Use(r){return r?.v51Usage?.status||'pending';}
-function v100Ended(r){
- const start=Date.parse(String(r?.date||'')+'T'+String(r?.startTime||'00:00')+':00-05:00');
+function v100EndMs(r){
+ const date=String(r?.date||''),startTime=String(r?.startTime||'');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d{2}:\d{2}$/.test(startTime))return NaN;
+ const start=Date.parse(date+'T'+startTime+':00-05:00');
+ // Use the duration stored on the actual reservation. This is the same finish
+ // threshold used by the operational result handler, including overnight games.
  const minutes=Number(r?.duration||getSnap(r)?.duration||0);
- return Number.isFinite(start)&&Number.isFinite(minutes)&&minutes>0&&Date.now()>=start+minutes*60000;
+ return Number.isFinite(start)&&Number.isFinite(minutes)&&minutes>0?start+minutes*60000:NaN;
 }
+function v100Ended(r){const finish=v100EndMs(r);return Number.isFinite(finish)&&Date.now()>=finish;}
 function v100Completed(r){return ['completed','no_show','not_realized'].includes(v100Use(r));}
 function v100CanSwipe(r){return v89Desk()&&w.page==='reservations'&&w.resView==='agenda'&&
  r?.status==='Confirmada'&&allowed(current(),r.venueId)&&authorized(current(),'rental',r.venueId)&&
@@ -20617,7 +20622,7 @@ const v100PrevReservationBody=reservationBody;
 reservationBody=function(){const html=v100PrevReservationBody();return w.resView==='agenda'?html+v100UndoBar():html;};
 function v100Play(id){
  const r=get(data.v48RentalOps,id);
- assert(v100CanSwipe(r),'«Jugó» solo está disponible después de terminar una reserva confirmada y autorizada.');
+ assert(v105CanComplete(r),'«Jugó» solo está disponible después de terminar una reserva confirmada y autorizada.');
  const from=v100Use(r);
  if(from==='pending'){
   assert(window.V69Operations?.usage,'No está disponible el registro operativo.');
@@ -20666,7 +20671,7 @@ function v100BindSwipes(){
   card.addEventListener('touchstart',ev=>{if(ev.touches.length===1)begin(ev.touches[0].clientX,ev.touches[0].clientY)},{passive:true});
   card.addEventListener('touchmove',ev=>{if(ev.touches.length===1)update(ev.touches[0].clientX,ev.touches[0].clientY)},{passive:true});
   card.addEventListener('touchend',finish,{passive:true});card.addEventListener('touchcancel',()=>{moving=false;horizontal=false;v100ResetSwipe(shell)},{passive:true});
-  card.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse'&&ev.button===0)begin(ev.clientX,ev.clientY)});
+  card.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse'&&ev.button===0){begin(ev.clientX,ev.clientY);try{card.setPointerCapture?.(ev.pointerId)}catch(_){}}});
   card.addEventListener('pointermove',ev=>{if(ev.pointerType==='mouse'&&moving)update(ev.clientX,ev.clientY)});
   card.addEventListener('pointerup',ev=>{if(ev.pointerType==='mouse')finish()});
   card.addEventListener('pointercancel',()=>{moving=false;horizontal=false;v100ResetSwipe(shell)});
@@ -21142,6 +21147,492 @@ const v103BaseRender=workerRender;
 workerRender=function(...args){const result=v103BaseRender(...args);if(shadow&&!shadow.getElementById('v103-close-warning-style')){
  const style=document.createElement('style');style.id='v103-close-warning-style';style.textContent=V103_CSS;shadow.appendChild(style);
  }return result;};
+
+// ELEVA SPORT | Cotizaciones unificadas y navegación simplificada.
+// Se integra sin sustituir reservas, tarifas, agenda, caja ni los documentos existentes.
+const V104_STYLE = `
+.v104-intro{color:#6a7e82;font-size:11.8px;line-height:1.55;margin:0 0 13px}
+.v104-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:15px 0}
+.v104-stat{border:1px solid #dfe8e5;border-radius:13px;background:white;padding:13px;min-width:0}
+.v104-stat small{display:block;color:#71848a;font-size:10px;line-height:1.35}
+.v104-stat strong{display:block;margin-top:4px;font-size:21px;letter-spacing:-.04em;color:#12232d}
+.v104-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(155px,210px);gap:9px;margin:12px 0 15px}
+.v104-controls input,.v104-controls select{width:100%;height:43px;min-width:0;background:white;border:1px solid #dce6e2;border-radius:10px;padding:9px 11px;color:#12232d;font-size:13px;font-family:inherit;box-sizing:border-box;outline:none}
+.v104-controls input:focus,.v104-controls select:focus{border-color:#47ad78;box-shadow:0 0 0 3px rgba(0,230,77,.1)}
+.v104-quote-card{background:#fff;border:1px solid #e0e9e5;border-radius:14px;padding:15px;margin-bottom:10px;min-width:0}
+.v104-quote-head{display:flex;align-items:flex-start;justify-content:space-between;gap:9px}
+.v104-quote-head>div{min-width:0}.v104-quote-head strong{font-size:13px;color:#12232d;line-height:1.45;overflow-wrap:anywhere;display:block;margin:7px 0 5px}
+.v104-quote-head small{font-size:11px;line-height:1.55;color:#6b8085;display:block;overflow-wrap:anywhere}
+.v104-type{font-size:10px;color:#316353;background:#eff6f1;border-radius:7px;padding:5px 8px;font-weight:750;display:inline-block}
+.v104-state{font-size:10px;padding:5px 8px;border-radius:99px;color:#5d7377;background:#f1f5f4;font-weight:750;white-space:nowrap}
+.v104-quote-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #edf0ee;margin-top:13px;padding-top:12px;flex-wrap:wrap}
+.v104-quote-foot b{font-size:16px;font-weight:790;color:#12232d;font-variant-numeric:tabular-nums}
+.v104-quote-foot small{font-size:10px;color:#70848b;display:block;margin-top:3px}
+.v104-actions{display:flex;gap:7px;flex-wrap:wrap}.v104-actions .btn{min-height:36px;font-size:11px}
+.v104-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.v104-choice{width:100%;display:flex;flex-direction:column;gap:9px;text-align:left;background:#fff;border:1px solid #dce6e2;border-radius:14px;padding:16px;min-height:140px;color:#12232d;cursor:pointer;font:inherit}
+.v104-choice:hover,.v104-choice:focus-visible{border-color:#4dba7d;background:#f7fcf8;outline:none}
+.v104-choice .v104-choice-icon{background:#ebf7ef;border-radius:10px;width:37px;height:37px;display:flex;align-items:center;justify-content:center;color:#0d8450}
+.v104-choice strong{font-size:12px;color:#12232d;line-height:1.4}.v104-choice small{color:#6d8087;font-size:10.5px;line-height:1.48}
+.v104-info{margin:12px 0;padding:12px;border:1px solid #e3e9e5;background:#f6f9f7;border-radius:12px;color:#657b79;font-size:11px;line-height:1.6}
+.v104-admin .v104-admin-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+.v104-admin .v104-admin-entries{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.v104-admin .v104-quote-card{margin:0}
+#content:has(.v104-admin) .v48-quote-links{display:none!important}
+@media(max-width:700px){.v104-controls{grid-template-columns:1fr}.v104-choices{grid-template-columns:1fr 1fr}.v104-choice{padding:12px;min-height:134px}.v104-admin .v104-admin-entries{grid-template-columns:1fr}}
+@media(max-width:380px){.v104-choices{grid-template-columns:1fr}.v104-choice{min-height:100px}.v104-quote-foot{align-items:flex-start}.v104-quote-foot .v104-actions{width:100%}}
+`;
+function v104Style(doc){if(!doc||doc.getElementById('eleva-v104-quote-style'))return;const style=document.createElement('style');style.id='eleva-v104-quote-style';style.textContent=V104_STYLE;(doc.head||doc).appendChild(style);}
+v104Style(document);
+
+// ADMINISTRACIÓN: el acceso único reúne cotizaciones por hora y propuestas de eventos.
+let v104AdminFilter='all',v104AdminQuery='',v104AdminShowPicker=false;
+function v104KindOf(q){const s=String(q.v104Kind||q.title||'').toLocaleLowerCase('es-PE');if(s.includes('birthday')||s.includes('cumplea'))return 'birthday';if(q.type==='recurring')return 'recurring';if(q.type==='custom')return 'custom';return 'event';}
+const v104KindNames={rental:'Alquiler de cancha',birthday:'Cumpleaños',event:'Evento o paquete',recurring:'Alquiler recurrente',custom:'Personalizada'};
+function v104AdminEntries(){
+ const direct=(data.v48RentalOps||[]).filter(r=>r.status==='Cotizada').map(r=>{const s=getSnap(r)||r;return {kind:'rental',id:r.id,title:(client(r.customerId)?.name||'Cliente')+' · '+(r.code||'Cotización'),customer:client(r.customerId)?.name||'Cliente',code:r.code||'',venue:site(r.venueId)?.name||'',date:r.date||'',amount:Number(s.amount)||0,status:r.status,updated:r.updatedAt||r.createdAt||r.date||'',isRental:true};});
+ const commercial=(data.quoteRecordsV6||[]).map(q=>({kind:v104KindOf(q),id:q.id,title:q.title||'Propuesta comercial',customer:client(q.clientId)?.name||'Cliente',code:q.number||'',venue:site(q.venueId)?.name||'',date:q.dates?.[0]?.date||'',amount:v6QuoteCalc(q).serviceTotal,status:q.status||'Borrador',updated:q.updatedAt||q.createdAt||'',isRental:false}));
+ return [...direct,...commercial].sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
+}
+function v104Matches(row,type,query){const text=[row.title,row.customer,row.code,row.venue,v104KindNames[row.kind]].join(' ').toLocaleLowerCase('es-PE');return (type==='all'||row.kind===type)&&text.includes(query.toLocaleLowerCase('es-PE').trim());}
+function v104AdminCard(r){const e=h;const label=v104KindNames[r.kind]||'Cotización';return '<article class="v104-quote-card"><div class="v104-quote-head"><div><span class="v104-type">'+e(label)+'</span><strong>'+e(r.title)+'</strong><small>'+e(r.code)+' · '+e(r.venue)+(r.date?' · '+e(r.date):'')+'</small></div><span class="v104-state">'+e(r.status)+'</span></div><div class="v104-quote-foot"><div><b>'+v6Currency(r.amount)+'</b><small>'+e(r.customer)+'</small></div><div class="v104-actions">'+(r.isRental?'<button class="btn sm outline" onclick="V48.detail('+Number(r.id)+')">Ver cotización</button>':'<button class="btn sm outline" onclick="v6OpenQuote('+Number(r.id)+')">Abrir propuesta</button>')+'</div></div></article>';}
+function v104AdminList(){const results=v104AdminEntries().filter(r=>v104Matches(r,v104AdminFilter,v104AdminQuery));return results.length?results.map(v104AdminCard).join(''):'<div class="v104-info">No se encontraron cotizaciones con este filtro.</div>';}
+function v104AdminCenter(){const all=v104AdminEntries();const picker=[['rental','calendar','Alquiler de canchas','Cotizar horas y espacios usando las tarifas configuradas.'],['birthday','calendar','Cumpleaños','Paquete deportivo, instalaciones y adicionales.'],['event','briefcase','Evento o paquete','Eventos deportivos, empresariales o uso exclusivo.'],['recurring','calendar','Alquiler recurrente','Varias semanas, fechas y horas contratadas.'],['custom','copy','Personalizada','Conceptos y servicios seleccionados libremente.']];
+ return '<div class="v104-admin">'+title('Comercial','Cotizaciones','Prepara propuestas de alquiler, cumpleaños y eventos desde un mismo lugar.', '<button class="btn" type="button" onclick="V104.adminPicker()">'+icon('plus')+' Nueva cotización</button>')+
+ '<div class="v104-stats"><div class="v104-stat"><small>Propuestas registradas</small><strong>'+all.length+'</strong></div><div class="v104-stat"><small>Alquileres cotizados</small><strong>'+all.filter(x=>x.kind==='rental').length+'</strong></div><div class="v104-stat"><small>Otras propuestas</small><strong>'+all.filter(x=>x.kind!=='rental').length+'</strong></div></div>'+
+ (v104AdminShowPicker?'<section class="card cardpad" style="margin-bottom:15px"><div class="row-between"><strong>¿Qué necesita cotizar el cliente?</strong><button class="btn sm outline" onclick="V104.adminPicker()">Cerrar</button></div><div class="v104-choices">'+picker.map(([k,ic,name,desc])=>'<button class="v104-choice" type="button" onclick="V104.adminStart(\''+k+'\')"><span class="v104-choice-icon">'+icon(ic,20)+'</span><strong>'+h(name)+'</strong><small>'+h(desc)+'</small></button>').join('')+'</div></section>':'')+
+ '<section class="card cardpad"><div class="v104-admin-toolbar"><button class="btn sm outline" onclick="go(\'quoteTemplates\')">Plantillas</button><button class="btn sm outline" onclick="go(\'quoteConcepts\')">Conceptos cotizables</button></div><div class="v104-controls"><input type="search" id="v104-admin-search" aria-label="Buscar cotizaciones" placeholder="Buscar cliente, código o servicio..." value="'+h(v104AdminQuery)+'" oninput="V104.adminSearch(this.value)"><select aria-label="Filtrar cotizaciones" id="v104-admin-filter" onchange="V104.adminFilter(this.value)">'+[['all','Todos los tipos'],...Object.entries(v104KindNames)].map(([k,v])=>'<option value="'+h(k)+'" '+(v104AdminFilter===k?'selected':'')+'>'+h(v)+'</option>').join('')+'</select></div><div class="v104-admin-entries" id="v104-admin-entries">'+v104AdminList()+'</div></section>'+
+ '<div class="v104-info">Cotizar no bloquea canchas. Al confirmar un alquiler se vuelve a comprobar disponibilidad y tarifa. Las propuestas de eventos conservan su planificación diferenciada.</div></div>';
+}
+function v104BeginAdmin(kind){
+ v104AdminShowPicker=false;
+ if(kind==='rental'){if(window.V48?.newRental)window.V48.newRental();else {go('rates');toast('No se pudo abrir el formulario de alquiler.')}return;}
+ const q=v6InvoiceBase(),tomorrow=dayPlus(day(),1),week=Number(new Date(tomorrow+'T12:00:00').getDay());
+ q.id=null;q.v104Kind=kind;q.type=kind==='recurring'?'recurring':kind==='custom'?'custom':'event';
+ q.status='Borrador';q.number='BORRADOR';q.title=kind==='birthday'?'Cumpleaños deportivo':kind==='recurring'?'Alquiler recurrente':kind==='event'?'Evento deportivo':'Propuesta personalizada';
+ q.description='';q.attendees='';q.discount={enabled:false,type:'fixed',value:0,condition:'single',deadline:''};q.base=0;q.minBase=0;q.guarantee=0;q.items=[];
+ q.pricing='itemized';q.docView='detailed';q.validUntil=dayPlus(day(),7);q.dates=kind==='custom'?[]:[{id:randId(),date:tomorrow,start:'15:00',end:'18:00',venueId:Number(q.venueId),note:''}];
+ if(kind==='recurring'){q.recurrence={start:tomorrow,weeks:4,days:[week],startTime:'19:00',endTime:'21:00'};q.dates=v6BuildWeekdates(q.recurrence);}
+ if(kind==='birthday'){const t=(data.quoteTemplates||[]).find(t=>t.status==='Activo'&&/cumplea/i.test(t.name)&&(t.venueId==='all'||Number(t.venueId)===Number(q.venueId)));if(t){v6FromTemplate(t,q);q.title='Cumpleaños deportivo';q.description='';q.dates=[{id:randId(),date:tomorrow,start:'15:00',end:'18:00',venueId:Number(q.venueId),note:''}];}}
+ v6Draft=q;v6EditorTab='general';go('quoteEditV6');
+}
+// Se reutiliza la edición comercial vigente. La entrada y el listado sí se unifican.
+if(typeof v6QuoteCenter==='function')v6QuoteCenter=v104AdminCenter;
+const v104PriorAdminQuoteEdit=v6QuoteEdit;
+v6QuoteEdit=function(){const original=v104PriorAdminQuoteEdit();if(!v6Draft?.v104Kind)return original;const main=V6_quoteTypes[v6Draft.type]?.label||'Propuesta';return original.replace('Cotizaciones / '+main,'Cotizaciones / '+(v104KindNames[v6Draft.v104Kind]||main));};
+window.V104={adminPicker(){v104AdminShowPicker=!v104AdminShowPicker;render();},adminStart:v104BeginAdmin,adminSearch(value){v104AdminQuery=String(value||'');const el=document.getElementById('v104-admin-entries');if(el)el.innerHTML=v104AdminList();},adminFilter(value){v104AdminFilter=value;const el=document.getElementById('v104-admin-entries');if(el)el.innerHTML=v104AdminList();},openWorkerQuotes(){w.page='quotes';w.modal=null;workerRender();}};
+
+// ENCARGADO / VENTAS: una sola sección para las cotizaciones de alquiler y eventos.
+w.v104QuoteFilter=w.v104QuoteFilter||'all';w.v104QuoteSearch=w.v104QuoteSearch||'';
+function v104WorkerEntries(){
+ const rentalsList=rentals().filter(r=>r.status==='Cotizada').map(r=>{const s=getSnap(r)||r;return {isRental:true,kind:'rental',id:r.id,code:r.code||'',title:client(r.customerId)?.name||'Cliente',customer:client(r.customerId)?.name||'Cliente',date:r.date||'',venue:site(r.venueId)?.name||'',amount:Number(s.amount)||0,status:'Cotizada',updated:r.createdAt||r.date||''};});
+ const eventList=(data.quoteRecordsV6||[]).filter(r=>allowed(current(),r.venueId)).map(r=>({isRental:false,kind:v104KindOf(r),id:r.id,code:r.number||'',title:r.title||'Propuesta comercial',customer:client(r.clientId)?.name||'Cliente',date:r.dates?.[0]?.date||'',venue:site(r.venueId)?.name||'',amount:v6QuoteCalc(r).serviceTotal,status:r.status||'Borrador',updated:r.updatedAt||r.createdAt||''}));
+ return [...rentalsList,...eventList].sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
+}
+function v104WorkerRows(){const rows=v104WorkerEntries().filter(r=>v104Matches(r,w.v104QuoteFilter,w.v104QuoteSearch));return rows.length?rows.map(r=>{
+ const kind=v104KindNames[r.kind]||'Evento o paquete';
+ return '<article class="v104-quote-card"><div class="v104-quote-head"><div><span class="v104-type">'+esc(kind)+'</span><strong>'+esc(r.title)+'</strong><small>'+esc(r.code)+' · '+esc(r.venue)+(r.date?' · '+esc(asDate(r.date)):'')+'</small></div><span class="v104-state">'+esc(r.status)+'</span></div><div class="v104-quote-foot"><div><b>'+fmt(r.amount)+'</b><small>'+esc(r.customer)+'</small></div><div class="v104-actions">'+actionButton('Ver propuesta',r.isRental?'detail':'eventDetail','outline sm','data-id="'+esc(r.id)+'"')+(r.isRental?actionButton('Crear reserva','v82ConvertQuote','green sm','data-id="'+esc(r.id)+'"'):'')+'</div></div></article>';
+ }).join(''):'<div class="empty">No hay cotizaciones en esta selección.</div>';}
+function v104WorkerQuotesPage(){const all=v104WorkerEntries();return header('Cotizaciones','Alquileres de canchas, cumpleaños y eventos desde un solo lugar.',actionButton('+ Nueva cotización','v104Choose','green sm'))+
+ '<div class="v104-stats"><div class="v104-stat"><small>Total</small><strong>'+all.length+'</strong></div><div class="v104-stat"><small>Canchas</small><strong>'+all.filter(r=>r.isRental).length+'</strong></div><div class="v104-stat"><small>Eventos y paquetes</small><strong>'+all.filter(r=>!r.isRental).length+'</strong></div></div>'+
+ '<div class="v104-controls"><input id="v104-worker-search" type="search" aria-label="Buscar cotizaciones" placeholder="Cliente, código o propuesta..." value="'+esc(w.v104QuoteSearch)+'"><select id="v104-worker-filter" aria-label="Tipo de cotización">'+[['all','Todos los tipos'],...Object.entries(v104KindNames)].map(([k,v])=>'<option value="'+esc(k)+'" '+(w.v104QuoteFilter===k?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></div>'+
+ '<div id="v104-worker-list">'+v104WorkerRows()+'</div><div class="v104-info">Las cotizaciones no bloquean instalaciones ni generan cobros. Para crear una reserva se validan nuevamente la tarifa y disponibilidad. Los eventos requieren planificación de recursos antes de su ejecución.</div>';
+}
+function v104PickerModal(){const choices=[['rental','calendar','Alquiler de canchas','Horas y formatos según tarifas de la sede.','v104StartRental'],['birthday','calendar','Cumpleaños deportivo','Cotización con un paquete de cumpleaños.','v104StartBirthday'],['event','calendar','Evento o paquete','Evento deportivo, uso exclusivo o servicios combinados.','v104StartEvent']];return modalShell('COTIZACIONES','Nueva cotización',
+ '<p class="v104-intro">Selecciona el tipo de servicio. Cada opción conserva sus precios y condiciones configurados en Eleva Sport.</p><div class="v104-choices">'+choices.map(([,ic,name,desc,a])=>'<button type="button" class="v104-choice" data-action="'+a+'"><span class="v104-choice-icon">'+ico(ic,'sm')+'</span><strong>'+esc(name)+'</strong><small>'+esc(desc)+'</small></button>').join('')+'</div><div class="v104-info">El alquiler por horas utiliza tarifas y disponibilidad. Para cumpleaños y eventos se elige una plantilla comercial activa. En esta etapa no se bloquea ningún espacio.</div>',actionButton('Cancelar','closeModal','secondary'));
+}
+function v104OpenEvent(kind){w.v104EventKind=kind;w.eventDraft=null;const d=eventDraft();const list=(data.quoteTemplates||[]).filter(t=>t.status==='Activo'&&(t.venueId==='all'||Number(t.venueId)===Number(d.venueId)));const pattern=kind==='birthday'?/cumplea/i:/(evento|deport|exclusivo|campeonato|corporativo)/i;const match=list.find(t=>pattern.test(t.name));d.templateId=match?.id||'';d.title='';d.description='';w.page='quotes';openWorkerModal('newEvent');}
+const v104PreviousWorkerMore=moreView;
+moreView=function(){const base=v104PreviousWorkerMore();if(!v89Desk()&&role()!=='sales')return base;const node=document.createElement('div');node.innerHTML=base;const list=node.querySelector('.stack');if(!list)return base;
+ for(const card of [...list.querySelectorAll(':scope > .more-card')]){const name=card.querySelector('.more-title')?.textContent?.trim();if(['Eventos','Cotizaciones','Solicitudes','Autorizaciones'].includes(name))card.remove();}
+ const button=document.createElement('button');button.className='more-card';button.type='button';button.dataset.action='v104PageQuotes';button.innerHTML='<div class="iconbox">'+ico('file')+'</div><div class="flex1"><div class="more-title">Cotizaciones</div><small>Alquileres, cumpleaños y eventos</small></div>'+ico('chevron','sm');
+ const cards=[...list.querySelectorAll(':scope > .more-card')];const first=cards.find(card=>/Tarifas de canchas|Programaciones/.test(card.querySelector('.more-title')?.textContent||''));if(first)first.after(button);else list.prepend(button);return node.innerHTML;
+};
+const v104PreviousWorkerSidebar=sidebar;
+sidebar=function(){const html=v104PreviousWorkerSidebar();if(role()!=='desk'&&role()!=='sales')return html;
+ const root=document.createElement('div');root.innerHTML=html;
+ const more=root.querySelector('button[data-target="more"],button[data-action="page"][data-target="more"]');
+ if(more){const link=document.createElement('button');link.type='button';link.className='side-nav '+(w.page==='quotes'?'active':'');link.dataset.action='v104PageQuotes';link.innerHTML=ico('file')+' Cotizaciones';more.before(link);return root.innerHTML;}
+ return html;};
+const v104PreviousWorkerModalView=modalView;
+modalView=function(){if(w.modal==='v104QuotePicker')return v104PickerModal();const html=v104PreviousWorkerModalView();if(w.modal==='newEvent'&&w.v104EventKind){const node=document.createElement('div');node.innerHTML=html;const heading=node.querySelector('.sheet-head h2');if(heading)heading.textContent=w.v104EventKind==='birthday'?'Cotizar cumpleaños':'Cotizar evento o paquete';const first=node.querySelector('.sheet-body');if(first)first.insertAdjacentHTML('afterbegin','<div class="v104-info">Selecciona el paquete y verifica las condiciones antes de guardar. El documento mantendrá el diseño institucional.</div>');return node.innerHTML;}return html;};
+const v104PreviousWorkerRender=workerRender;
+workerRender=function(...args){const result=v104PreviousWorkerRender(...args);if(!shadow)return result;v104Style(shadow);if(w.page==='quotes'){const target=shadow.getElementById('v51-page');if(target)target.innerHTML=v104WorkerQuotesPage();}return result;};
+const v104PreviousWorkerClick=onWorkClick;
+onWorkClick=function(e){const b=e.target?.closest?.('[data-action]'),a=b?.dataset.action||'';
+ try{
+  if(a==='v104PageQuotes'||a==='v82Quotes'){w.page='quotes';w.modal=null;w.modalId=null;w.v104EventKind=null;workerRender();return;}
+  if(a==='v104Choose'){openWorkerModal('v104QuotePicker');return;}
+  if(a==='v104StartRental'){w.v104EventKind=null;w.page='quotes';w.draft=newDraft();openWorkerModal('newQuote');return;}
+  if(a==='v104StartBirthday'){v104OpenEvent('birthday');return;}
+  if(a==='v104StartEvent'){v104OpenEvent('event');return;}
+  if(a==='saveEvent'&&w.v104EventKind){const kind=w.v104EventKind;v104PreviousWorkerClick(e);if(w.modal==='eventDetail'&&w.modalId){const quoteRecord=get(data.quoteRecordsV6,w.modalId);if(quoteRecord){quoteRecord.v104Kind=kind;persistAll();}}return;}
+ }catch(err){console.error('Cotizaciones',err);fire(err.message||'No se pudo abrir la cotización.');return;}
+ return v104PreviousWorkerClick(e);
+};
+const v104PreviousWorkerInput=onWorkInput;
+onWorkInput=function(e){if(e.target?.id==='v104-worker-search'){w.v104QuoteSearch=e.target.value;const box=q('v104-worker-list');if(box)box.innerHTML=v104WorkerRows();return;}return v104PreviousWorkerInput(e);};
+const v104PreviousWorkerChange=onWorkChange;
+onWorkChange=function(e){if(e.target?.id==='v104-worker-filter'){w.v104QuoteFilter=e.target.value;const box=q('v104-worker-list');if(box)box.innerHTML=v104WorkerRows();return;}return v104PreviousWorkerChange(e);};
+
+
+/* ELEVA SPORT | Continuidad del gesto Jugó en Agenda.
+   Mantiene la tarjeta original; completa la activación cuando acaba el horario
+   sin obligar a salir y volver a entrar. El detalle ofrece la misma acción.
+   No cambia importes, recibos, disponibilidad, módulos comerciales ni caja. */
+let v105AgendaTimer=null;
+function v105CanComplete(r){
+ return !!(r&&v89Desk()&&session()&&r.status==='Confirmada'&&
+  allowed(current(),r.venueId)&&authorized(current(),'rental',r.venueId)&&
+  ['pending','arrived','in_progress'].includes(v100Use(r))&&v100Ended(r));
+}
+function v105AgendaActive(){return !!(shadow&&v89Desk()&&session()&&w.page==='reservations'&&w.resView==='agenda'&&!w.modal);}
+function v105WrapCard(card,r){
+ if(!card?.parentElement||card.closest('.v100-swipe-shell'))return false;
+ const shell=document.createElement('div');shell.className='v100-swipe-shell';shell.dataset.v100Id=String(r.id);
+ shell.setAttribute('aria-label','Desliza a la derecha para indicar que jugó');
+ const button=document.createElement('button');button.type='button';button.className='v100-swipe-action';
+ button.dataset.action='v100Play';button.dataset.id=String(r.id);
+ button.setAttribute('aria-label','Marcar partido como jugado');
+ button.innerHTML=ico('checkcircle','sm')+'<span>Jugó</span>';
+ card.parentNode.insertBefore(shell,card);shell.appendChild(button);shell.appendChild(card);
+ return true;
+}
+function v105PlanAgendaRefresh(){
+ if(v105AgendaTimer!==null){clearTimeout(v105AgendaTimer);v105AgendaTimer=null;}
+ if(!v105AgendaActive())return;
+ let next=Infinity;
+ for(const el of shadow.querySelectorAll('.v87-reservation-stack .v52-booking-card[data-id]')){
+  if(el.closest('.v100-swipe-shell'))continue;
+  const r=get(data.v48RentalOps,el.dataset.id);
+  if(!r||r.status!=='Confirmada'||!allowed(current(),r.venueId)||!authorized(current(),'rental',r.venueId)||
+    !['pending','arrived','in_progress'].includes(v100Use(r)))continue;
+  const end=v100EndMs(r);if(Number.isFinite(end)&&end>Date.now())next=Math.min(next,end);
+ }
+ if(Number.isFinite(next)){
+  // One lightweight timer, scheduled for the next completed match.
+  // Hourly cap also works safely when the browser throttles background tabs.
+  const delay=Math.max(120,Math.min(3600000,next-Date.now()+160));
+  v105AgendaTimer=setTimeout(()=>{v105AgendaTimer=null;v105SyncAgendaCards();},delay);
+ }
+}
+function v105SyncAgendaCards(){
+ if(!v105AgendaActive()){v105PlanAgendaRefresh();return;}
+ let added=0;
+ for(const el of shadow.querySelectorAll('.v87-reservation-stack .v52-booking-card[data-id]')){
+  if(el.closest('.v100-swipe-shell'))continue;
+  const r=get(data.v48RentalOps,el.dataset.id);
+  if(v105CanComplete(r)&&v105WrapCard(el,r))added++;
+ }
+ if(added)v100BindSwipes();
+ v105PlanAgendaRefresh();
+}
+// Keep the current scroll position and other on-screen cards intact.
+const v105PreviousWorkerRender=workerRender;
+workerRender=function(...args){const value=v105PreviousWorkerRender(...args);v105SyncAgendaCards();return value;};
+if(typeof document!=='undefined')document.addEventListener('visibilitychange',()=>{if(!document.hidden)v105SyncAgendaCards();});
+if(typeof window!=='undefined')window.addEventListener('focus',()=>v105SyncAgendaCards());
+
+// An unobtrusive alternative for mouse and keyboard users: only in the
+// existing reservation detail, and only after the scheduled end.
+const v105PriorDetailModal=detailModal;
+detailModal=function(){
+ const html=v105PriorDetailModal(),r=get(data.v48RentalOps,w.modalId);
+ if(w.modal!=='detail'||!v105CanComplete(r))return html;
+ const node=document.createElement('div');node.innerHTML=html;
+ const heading=[...node.querySelectorAll('h3,.v52-detail-title')].find(x=>/atenci[oó]n en cancha/i.test(x.textContent||''));
+ const block=heading?.closest('.v80-attention-top,.v52-detail-block');
+ const actions=block?.querySelector('.v80-attention-actions')||block?.querySelector('.row .row');
+ if(!actions)return html;
+ const existing=actions.querySelector('[data-action="usage"][data-value="completed"]');
+ if(existing)existing.remove();
+ const button=document.createElement('button');button.type='button';
+ button.className='btn outline sm';button.dataset.action='v105PlayDetail';button.dataset.id=String(r.id);
+ button.textContent='✓ Jugó';button.setAttribute('aria-label','Marcar partido como jugado');
+ actions.appendChild(button);
+ return node.innerHTML;
+};
+const v105PriorWorkClick=onWorkClick;
+onWorkClick=function(ev){
+ const el=ev.target?.closest?.('[data-action="v105PlayDetail"]');
+ if(!el)return v105PriorWorkClick(ev);
+ ev.preventDefault();ev.stopPropagation();
+ const r=get(data.v48RentalOps,el.dataset.id);
+ if(!v105CanComplete(r)){fire('La reserva aún no puede marcarse como jugada.');return;}
+ const previous={page:w.page,resView:w.resView,date:w.date,modal:w.modal,modalId:w.modalId};
+ try{
+  w.page='reservations';w.resView='agenda';w.date=r.date;w.modal=null;w.modalId=null;
+  v100Play(r.id); // Reuses the audited result and 13-second undo.
+ }catch(error){Object.assign(w,previous);console.error('[Eleva Jugó detalle]',error);fire(error.message||'No fue posible finalizar la reserva.');}
+};
+window.ElevaAgendaSwipe.refresh=v105SyncAgendaCards;
+window.ElevaAgendaSwipe.canComplete=id=>v105CanComplete(get(data.v48RentalOps,id));
+
+/* ELEVA SPORT | Cotizaciones accesibles y gesto Jugó consistente.
+   Extiende los módulos existentes sin sustituir caja, tarifas, agenda o reservas. */
+const V106_CSS=`
+#v51-worker-app .v100-swipe-shell{touch-action:pan-y;-webkit-touch-callout:none}
+#v51-worker-app .v100-swipe-shell>.v52-booking-card{touch-action:pan-y;-webkit-tap-highlight-color:transparent}
+#v51-worker-app .v100-swipe-shell.v106-not-ready .v100-swipe-action{color:#52646a;background:#e8eeed}
+#v51-worker-app .v100-swipe-shell.v106-not-ready .v100-swipe-action svg{opacity:.6}
+#v51-worker-app .v100-swipe-action small{max-width:83px;font-size:9px;line-height:1.25;font-weight:650;text-align:center}
+#v51-worker-app .v106-quote-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:0 0 16px}
+#v51-worker-app .v106-quote-step{border-radius:7px;background:#edf2ef;color:#71857b;padding:9px 4px;font-size:10px;font-weight:750;text-align:center}
+#v51-worker-app .v106-quote-step.active{background:#12232d;color:#fff}
+#v51-worker-app .v106-quote-step.done{background:#e5f8ec;color:#097046}
+#v51-worker-app .v106-q-section{border:1px solid #e2ebe5;background:#fff;border-radius:12px;padding:13px;margin-bottom:10px}
+#v51-worker-app .v106-q-section h3{font-size:13px;margin:0 0 10px;color:#12232d}
+#v51-worker-app .v106-q-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#v51-worker-app .v106-q-fields>.wide{grid-column:1/-1}
+#v51-worker-app .v106-q-fields input,#v51-worker-app .v106-q-fields select,#v51-worker-app .v106-q-fields textarea{font-size:13px;min-height:42px;max-width:100%;min-width:0}
+#v51-worker-app .v106-q-row{padding:11px 0;border-top:1px solid #edf2ee}
+#v51-worker-app .v106-q-row:first-child{border-top:none}
+#v51-worker-app .v106-q-row-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+#v51-worker-app .v106-q-row-heading strong{font-size:12px}
+#v51-worker-app .v106-q-small{font-size:10.5px;color:#637b73;line-height:1.5}
+#v51-worker-app .v106-q-sum{background:#eff8f1;border:1px solid #dcebe0;border-radius:12px;padding:14px;margin:10px 0}
+#v51-worker-app .v106-q-sum>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#v51-worker-app .v106-q-sum strong{font-size:20px;color:#12232d}
+#v51-worker-app .v106-q-errors{border:1px solid #eed9bc;background:#fff8ea;border-radius:11px;padding:11px;color:#825d24;font-size:11px;line-height:1.55}
+#v51-worker-app .v106-q-footer{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap}
+#v51-worker-app .v106-q-footer .btn{flex:1 1 auto;min-width:105px}
+#v51-worker-app .v106-q-ref{color:#647e72;font-size:11px;line-height:1.5;margin-top:7px}
+#v51-worker-app .v106-q-section .field textarea{min-height:76px}
+#v51-worker-app .v106-quote-tab{display:flex;align-items:center;justify-content:center;gap:4px}
+@media(max-width:680px){#v51-worker-app .v106-q-fields input,#v51-worker-app .v106-q-fields select,#v51-worker-app .v106-q-fields textarea{font-size:16px!important}#v51-worker-app .v106-q-section{padding:11px}#v51-worker-app .v106-q-fields{gap:9px}#v51-worker-app .v106-q-fields .field label{font-size:10.5px}#v51-worker-app .v106-quote-step{font-size:9px}}
+@media(max-width:390px){#v51-worker-app .v106-q-fields{grid-template-columns:1fr}#v51-worker-app .v106-q-fields>.wide{grid-column:auto}#v51-worker-app .bottom-nav button{min-width:0;font-size:9.5px}}
+`;
+function v106InstallCss(){if(!shadow||shadow.getElementById('v106-css'))return;const style=document.createElement('style');style.id='v106-css';style.textContent=V106_CSS;shadow.appendChild(style);}
+function v106Ready(r){return !!(r&&v89Desk()&&session()&&r.status==='Confirmada'&&allowed(current(),r.venueId)&&authorized(current(),'rental',r.venueId)&&['pending','arrived','in_progress'].includes(v100Use(r)));}
+// The gesture responds on confirmed reservations, even when marking is not yet permitted.
+// Business validation remains in v100Play / v105CanComplete and never marks early.
+v100CanSwipe=function(r){return v106Ready(r)&&w.page==='reservations'&&w.resView==='agenda';};
+function v106EndLabel(r){const ms=v100EndMs(r);return Number.isFinite(ms)?new Date(ms).toLocaleTimeString('es-PE',{timeZone:'America/Lima',hour:'2-digit',minute:'2-digit',hour12:false}):'el fin del horario';}
+let v106FinishTimer=null;
+function v106UpdateSwipeLabels(){
+ if(v106FinishTimer!==null){clearTimeout(v106FinishTimer);v106FinishTimer=null;}
+ if(!shadow||w.page!=='reservations'||w.resView!=='agenda'||w.modal)return;
+ let next=Infinity;
+ for(const shell of shadow.querySelectorAll('.v100-swipe-shell[data-v100-id]')){
+  const r=get(data.v48RentalOps,shell.dataset.v100Id),btn=shell.querySelector('.v100-swipe-action');if(!r||!btn)continue;
+  if(v105CanComplete(r)){
+   shell.classList.remove('v106-not-ready');btn.dataset.action='v100Play';btn.dataset.id=String(r.id);
+   btn.setAttribute('aria-label','Marcar partido como jugado');btn.innerHTML=ico('checkcircle','sm')+'<span>Jugó</span>';
+  }else{
+   shell.classList.add('v106-not-ready');btn.dataset.action='v106NotYet';btn.dataset.id=String(r.id);
+   const label=v106EndLabel(r);btn.setAttribute('aria-label','Acción Jugó disponible al terminar, a las '+label);
+   btn.innerHTML=ico('clock','sm')+'<span>Al finalizar</span><small>'+esc(label)+'</small>';
+   const ms=v100EndMs(r);if(Number.isFinite(ms)&&ms>Date.now())next=Math.min(next,ms);
+  }
+ }
+ if(Number.isFinite(next))v106FinishTimer=setTimeout(()=>{v106FinishTimer=null;v106UpdateSwipeLabels();},Math.max(180,Math.min(3600000,next-Date.now()+200)));
+}
+function v106CloseOther(shell){shadow?.querySelectorAll('.v100-swipe-shell.v100-open').forEach(el=>{if(el!==shell)v100ResetSwipe(el);});}
+// A single touch handler wins the horizontal gesture only after checking direction.
+// Vertical scrolling remains native; pointer handlers cover desktop mouse/trackpad.
+v100BindSwipes=function(){
+ if(!shadow||!v89Desk()||w.page!=='reservations'||w.resView!=='agenda'||w.modal)return;
+ shadow.querySelectorAll('.v100-swipe-shell').forEach(shell=>{
+  if(shell.dataset.v106Bound)return;shell.dataset.v106Bound='1';shell.dataset.v100Bound='1';
+  const card=shell.querySelector('.v52-booking-card');if(!card)return;
+  let startX=0,startY=0,lastDx=0,tracking=false,horizontal=false,vertical=false,originOpen=false;
+  const begin=(x,y)=>{startX=x;startY=y;lastDx=0;tracking=true;horizontal=false;vertical=false;originOpen=shell.classList.contains('v100-open');};
+  const move=(x,y,ev)=>{if(!tracking||vertical)return;const dx=x-startX,dy=y-startY;
+   if(!horizontal){if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.12){vertical=true;tracking=false;return;}
+    if(Math.abs(dx)<11)return;if(Math.abs(dx)<Math.abs(dy)*1.12)return;horizontal=true;}
+   lastDx=dx;if(ev?.cancelable&&ev.type==='touchmove')ev.preventDefault();
+   shell.classList.add('v100-swiping');card.style.transform='translate3d('+Math.max(0,Math.min(92,dx+(originOpen?92:0)))+'px,0,0)';
+  };
+  const finish=()=>{if(!tracking&&!horizontal)return;
+   if(horizontal){const pos=lastDx+(originOpen?92:0);const open=pos>=39;
+    if(open){v106CloseOther(shell);shell.classList.add('v100-open');}else shell.classList.remove('v100-open');
+    shell.dataset.v100SuppressUntil=String(Date.now()+550);
+   }
+   tracking=false;horizontal=false;vertical=false;lastDx=0;shell.classList.remove('v100-swiping');card.style.transform='';
+  };
+  const cancel=()=>{tracking=false;horizontal=false;vertical=false;shell.classList.remove('v100-swiping');card.style.transform='';};
+  card.addEventListener('touchstart',ev=>{if(ev.touches.length===1)begin(ev.touches[0].clientX,ev.touches[0].clientY);},{passive:true});
+  card.addEventListener('touchmove',ev=>{if(ev.touches.length===1)move(ev.touches[0].clientX,ev.touches[0].clientY,ev);},{passive:false});
+  card.addEventListener('touchend',finish,{passive:true});card.addEventListener('touchcancel',cancel,{passive:true});
+  card.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse'&&ev.button===0){begin(ev.clientX,ev.clientY);try{card.setPointerCapture(ev.pointerId);}catch(_){}}});
+  card.addEventListener('pointermove',ev=>{if(ev.pointerType==='mouse')move(ev.clientX,ev.clientY,ev);});
+  card.addEventListener('pointerup',ev=>{if(ev.pointerType==='mouse')finish();});
+  card.addEventListener('pointercancel',ev=>{if(ev.pointerType==='mouse')cancel();});
+  shell.addEventListener('click',ev=>{if(ev.target.closest('.v100-swipe-action'))return;
+   if(Date.now()<Number(shell.dataset.v100SuppressUntil||0)){ev.preventDefault();ev.stopImmediatePropagation();}
+  },true);
+ });
+};
+// Cotizaciones: central commercial list with a consistent type selector and adaptive
+// service editor, while hourly rentals continue to use the established tariff engine.
+function v106QuoteChoices(){return [
+ ['rental','calendar','Alquiler de canchas','Horas y canchas con tarifa y disponibilidad.'],
+ ['birthday','calendar','Cumpleaños','Paquetes, instalaciones y adicionales.'],
+ ['event','calendar','Evento deportivo','Jornadas, espacios y servicios.'],
+ ['recurring','calendar','Alquiler recurrente','Propuesta para varias semanas o fechas.'],
+ ['custom','file','Personalizada','Cotizar conceptos y servicios a medida.']
+];}
+v104PickerModal=function(){return modalShell('COTIZACIONES','Nueva cotización',
+ '<p class="v104-intro">¿Qué necesita cotizar el cliente? Elige un servicio para abrir su formulario.</p><div class="v104-choices">'+
+ v106QuoteChoices().map(([id,ic,name,desc])=>'<button type="button" class="v104-choice" data-action="v106QuoteStart" data-kind="'+id+'"><span class="v104-choice-icon">'+ico(ic,'sm')+'</span><strong>'+esc(name)+'</strong><small>'+esc(desc)+'</small></button>').join('')+
+ '</div><div class="v104-info">Cotizar no reserva ni genera cobros. El alquiler por horas utiliza tarifas; los paquetes usan conceptos y plantillas comerciales.</div>',actionButton('Cerrar','closeModal','secondary'));
+};
+function v106NewDraft(kind){
+ const q=v6InvoiceBase(),firstDay=dayPlus(day(),1);q.id=null;q.version=0;q.versions=[];q.status='Borrador';q.number='BORRADOR';q.v104Kind=kind;
+ q.type=kind==='recurring'?'recurring':kind==='custom'?'custom':'event';q.title=kind==='birthday'?'Cumpleaños deportivo':kind==='event'?'Evento deportivo':kind==='recurring'?'Alquiler recurrente':'Propuesta personalizada';
+ q.clientId=Number(data.customers?.find(valid)?.id||data.customers?.[0]?.id||0);q.venueId=Number(w.siteId);
+ q.description='';q.pricing='itemized';q.items=[];q.base=0;q.minBase=0;q.guarantee=0;q.taxPresentation='included';q.discount={enabled:false,type:'fixed',value:0,condition:'single',deadline:''};
+ q.validUntil=dayPlus(day(),7);q.advance=30;q.paymentPlan='regular';q.channel=role()==='sales'?'WhatsApp':'Presencial';
+ q.dates=[{id:idNew(),date:firstDay,start:'15:00',end:'18:00',venueId:q.venueId,note:''}];
+ if(kind==='recurring'){
+  const wd=new Date(firstDay+'T12:00:00Z').getUTCDay();q.recurrence={start:firstDay,weeks:4,days:[wd],startTime:'19:00',endTime:'21:00'};
+  q.dates=v6BuildWeekdates(q.recurrence).map(d=>({...d,id:idNew(),venueId:q.venueId}));
+ }
+ if(kind==='birthday'){
+  const template=(data.quoteTemplates||[]).find(t=>t.status==='Activo'&&/cumplea/i.test(t.name)&&(t.venueId==='all'||Number(t.venueId)===Number(q.venueId)));
+  if(template){v6FromTemplate(template,q);q.title='Cumpleaños deportivo';q.dates=[{id:idNew(),date:firstDay,start:'15:00',end:'18:00',venueId:q.venueId,note:''}];}
+ }
+ return q;
+}
+function v106KindLabel(kind){return ({birthday:'Cumpleaños',event:'Evento deportivo',recurring:'Alquiler recurrente',custom:'Propuesta personalizada'})[kind]||'Cotización';}
+function v106Field(label,id,value,type='text',attrs='',wide=false){return '<div class="field '+(wide?'wide':'')+'"><label for="'+id+'">'+esc(label)+'</label><input id="'+id+'" type="'+type+'" value="'+esc(value??'')+'" data-v106-field="'+id.slice(5)+'" '+attrs+'></div>';}
+function v106Select(label,id,optsList,current,attrs='',wide=false){return '<div class="field '+(wide?'wide':'')+'"><label for="'+id+'">'+esc(label)+'</label><select id="'+id+'" data-v106-field="'+id.slice(5)+'" '+attrs+'>'+optsList.map(([id,name])=>'<option value="'+esc(id)+'" '+(String(id)===String(current)?'selected':'')+'>'+esc(name)+'</option>').join('')+'</select></div>';}
+function v106Dates(){const draft=w.v106Draft;return '<section class="v106-q-section"><div class="row between" style="margin-bottom:8px"><h3 style="margin:0">'+(draft.type==='recurring'?'Programación semanal':'Fechas y horarios')+'</h3>'+(draft.type==='recurring'?'':actionButton('+ Fecha','v106DateAdd','outline sm'))+'</div>'+
+ (draft.type==='recurring'?'<div class="v106-q-fields">'+v106Field('Semanas','w106-weeks',draft.recurrence.weeks,'number','min="1" max="26"')+v106Select('Día de la semana','w106-weekday',[[0,'Domingo'],[1,'Lunes'],[2,'Martes'],[3,'Miércoles'],[4,'Jueves'],[5,'Viernes'],[6,'Sábado']],draft.recurrence.days[0])+'</div>':'')+
+ '<div class="v106-q-rowlist">'+(draft.dates||[]).map((d,i)=>'<div class="v106-q-row"><div class="v106-q-row-heading"><strong>'+(draft.type==='recurring'?'Fecha '+(i+1):'Jornada '+(i+1))+'</strong>'+(draft.type==='recurring'?'':actionButton('Quitar','v106DateRemove','outline sm','data-id="'+esc(d.id)+'"'))+'</div><div class="v106-q-fields">'+
+ '<div class="field"><label>Fecha</label><input type="date" data-v106-date="'+esc(d.id)+'" data-v106-key="date" value="'+esc(d.date)+'" '+(draft.type==='recurring'?'readonly':'')+'></div><div class="field"><label>Desde</label><input type="time" data-v106-date="'+esc(d.id)+'" data-v106-key="start" value="'+esc(d.start)+'"></div><div class="field"><label>Hasta</label><input type="time" data-v106-date="'+esc(d.id)+'" data-v106-key="end" value="'+esc(d.end)+'"></div></div></div>').join('')+'</div><div class="v106-q-ref">Estas fechas solo forman parte de la propuesta: no bloquean canchas.</div></section>';
+}
+function v106StepDetails(){const q=w.v106Draft,customers=(data.customers||[]).filter(valid),siteRows=sites().filter(v=>allowed(current(),v.id));
+ return '<section class="v106-q-section"><h3>Cliente y servicio</h3><div class="v106-q-fields">'+
+ v106Select('Cliente comercial *','w106-clientId',customers.map(c=>[c.id,c.name]),q.clientId,'',true)+'<div class="wide" style="margin:-3px 0 2px">'+actionButton('+ Registrar cliente','v106NewClient','outline sm')+'</div>'+
+ v106Select('Sede *','w106-venueId',siteRows.map(x=>[x.id,x.name]),q.venueId,'',true)+
+ v106Field('Nombre de la propuesta *','w106-title',q.title,'text','maxlength="130"',true)+
+ v106Field('Participantes estimados','w106-attendees',q.attendees,'number','min="0"')+
+ v106Select('Canal','w106-channel',[['Presencial','Presencial'],['WhatsApp','WhatsApp'],['Teléfono','Teléfono'],['Correo','Correo']],q.channel)+
+ '<div class="field wide"><label>Descripción</label><textarea id="w106-description" data-v106-field="description" rows="3" placeholder="Detalles o requerimientos particulares">'+esc(q.description||'')+'</textarea></div></div></section>'+v106Dates();
+}
+function v106Concepts(){const q=w.v106Draft,templates=(data.quoteTemplates||[]).filter(t=>t.status==='Activo'&&(t.venueId==='all'||Number(t.venueId)===Number(q.venueId))),catalog=(data.quoteConceptCatalog||[]).filter(x=>x.status==='Activo'),rs=(data.resources||[]).filter(r=>Number(r.venueId)===Number(q.venueId)&&valid(r));
+ return '<section class="v106-q-section"><h3>Paquete y conceptos cotizables</h3><div class="v106-q-fields">'+
+ v106Select('Plantilla (opcional)','w106-templateId',[['','Sin plantilla'],...templates.map(t=>[t.id,t.name])],q.templateId||'','',true)+
+ v106Select('Forma de precio','w106-pricing',[['itemized','Por conceptos'],['fixed','Precio global con inclusiones'],['mixed','Paquete + adicionales']],q.pricing,'',true)+
+ (q.pricing!=='itemized'?v106Field('Precio base del paquete (S/)','w106-base',q.base,'number','min="0" step="0.01"')+v106Field('Mínimo autorizado (S/)','w106-minBase',q.minBase,'number','min="0" step="0.01"'):'')+
+ '</div><div class="v106-q-ref">Al aplicar una plantilla se cargan sus conceptos, precios y condiciones. Puedes personalizar la propuesta.</div></section>'+
+ '<section class="v106-q-section"><h3>Instalaciones y servicios</h3><div class="v106-q-fields">'+
+ v106Select('Conceptos del catálogo','w106-catalog',[['','Seleccionar concepto'],...catalog.map(c=>[c.id,c.name])],'','',true)+
+ '<div class="field"><label>Agregar</label>'+actionButton('Añadir concepto','v106ItemAdd','outline sm')+'</div>'+
+ v106Select('Cancha / espacio','w106-space',[['','Seleccionar espacio'],...rs.map(r=>[r.id,r.name])],'','',true)+
+ '<div class="field"><label>Agregar</label>'+actionButton('Añadir espacio','v106SpaceAdd','outline sm')+'</div></div>'+
+ (q.items||[]).map(item=>'<div class="v106-q-row"><div class="v106-q-row-heading"><div><strong>'+esc(item.name)+'</strong><div class="v106-q-small">'+esc(item.category||'Concepto')+' · '+esc(item.unit||'Unidad')+'</div></div>'+actionButton('Quitar','v106ItemRemove','outline sm','data-id="'+esc(item.id)+'"')+'</div><div class="v106-q-fields">'+
+ '<div class="field"><label>Cantidad</label><input type="number" step="0.5" min="0" value="'+esc(item.qty)+'" data-v106-item="'+esc(item.id)+'" data-v106-key="qty"></div>'+
+ '<div class="field"><label>Precio unitario (S/)</label><input type="number" step="0.01" min="0" value="'+esc(item.price)+'" data-v106-item="'+esc(item.id)+'" data-v106-key="price"></div>'+
+ v106Select('Se cobra','w106-charge-'+item.id,[['extra','Adicional'],['included','Incluido en paquete']],item.charge||'extra','data-v106-item="'+esc(item.id)+'" data-v106-key="charge"')+'</div></div>').join('')+
+ '<div class="v106-q-ref">Las canchas añadidas como conceptos no verifican aquí una tarifa horaria automática: ingresa el precio acordado. Para alquiler de cancha por horas usa la opción específica.</div></section>';
+}
+function v106Terms(){const q=w.v106Draft,calc=v6QuoteCalc(q);return '<section class="v106-q-section"><h3>Condiciones comerciales</h3><div class="v106-q-fields">'+
+ v106Select('Presentación del IGV','w106-taxPresentation',[['included','IGV incluido en el precio'],['add','Precio antes de IGV (se agrega 18%)']],q.taxPresentation,'',true)+
+ v106Field('Adelanto (%)','w106-advance',q.advance,'number','min="0" max="100" step="1"')+
+ v106Field('Válida hasta','w106-validUntil',q.validUntil,'date')+
+ v106Field('Garantía reembolsable (S/)','w106-guarantee',q.guarantee,'number','min="0" step="0.01"')+
+ '<div class="field wide"><label>Condiciones particulares</label><textarea id="w106-customConditions" data-v106-field="customConditions" rows="3" placeholder="Observaciones, inclusiones y acuerdos de la propuesta">'+esc(q.customConditions||'')+'</textarea></div></div></section>'+v106Summary();}
+function v106Summary(){const q=w.v106Draft,calc=v6QuoteCalc(q);return '<section class="v106-q-sum"><div><span>Total de servicios</span><strong>'+fmt(calc.serviceTotal)+'</strong></div><div style="margin-top:7px"><small>Adelanto ('+esc(q.advance)+'%)</small><b>'+fmt(calc.advance)+'</b></div><div style="margin-top:7px"><small>Saldo de servicios</small><b>'+fmt(calc.balance)+'</b></div><div class="v106-q-ref">'+(q.taxPresentation==='included'?'Precio final con IGV incluido':'Se agrega el IGV al precio indicado')+'. La garantía reembolsable, si aplica, se indica por separado.</div></section>';}
+function v106ScrollQuote(){const body=shadow?.querySelector('.v106-quote-sheet .sheet-body');if(body)body.scrollTop=0;const sheet=shadow?.querySelector('.v106-quote-sheet');if(sheet)sheet.scrollTop=0;}
+function v106QuoteModal(){const k=w.v106Kind,q=w.v106Draft,step=w.v106Step||'details';if(!q)return modalShell('Cotizaciones','No disponible','Selecciona un servicio.');
+ const names={details:'1 · Cliente y fechas',items:'2 · Servicios y precio',terms:'3 · Condiciones y resumen'};
+ return modalShell('COTIZACIONES',v106KindLabel(k),
+ '<div class="v106-quote-steps">'+Object.entries(names).map(([id,label],i)=>'<div class="v106-quote-step '+(step===id?'active':Object.keys(names).indexOf(step)>i?'done':'')+'">'+label+'</div>').join('')+'</div>'+
+ (step==='details'?v106StepDetails():step==='items'?v106Concepts():v106Terms())+
+ (w.v106Errors?.length?'<div class="v106-q-errors">'+w.v106Errors.map(esc).join('<br>')+'</div>':'')+
+ '<div class="v106-q-footer">'+(step==='details'?actionButton('Cancelar','closeModal','outline'):actionButton('Anterior','v106QuoteBack','outline'))+
+ (step==='terms'?actionButton('Guardar cotización','v106QuoteSave','green'):actionButton('Continuar','v106QuoteNext','green'))+'</div>','', 'v106-quote-sheet');
+}
+function v106Start(kind){
+ assert(role()==='sales'||(v89Desk()&&session()),'Abre el turno para operar.');
+ if(kind==='rental'){w.v104EventKind=null;w.page='quotes';w.draft=newDraft();openWorkerModal('newQuote');return;}
+ assert(['birthday','event','recurring','custom'].includes(kind),'Selecciona un servicio válido.');
+ w.page='quotes';w.v104EventKind=null;w.v106Kind=kind;w.v106Draft=v106NewDraft(kind);w.v106Step='details';w.v106Errors=[];openWorkerModal('v106QuoteWizard');
+}
+function v106ApplyTemplate(id){const q=w.v106Draft,oldTitle=q.title,kind=w.v106Kind;const t=(data.quoteTemplates||[]).find(t=>String(t.id)===String(id)&&t.status==='Activo'&&(t.venueId==='all'||Number(t.venueId)===Number(q.venueId)));
+ if(!id){q.templateId=null;q.templateSnapshot=null;return;}
+ assert(t,'La plantilla no corresponde a esta sede.');v6FromTemplate(t,q);q.v104Kind=kind;q.title=oldTitle||t.name;
+}
+function v106HandleField(el){const draft=w.v106Draft;if(!draft||!el)return false;
+ if(el.dataset.v106Date){const d=draft.dates.find(d=>String(d.id)===el.dataset.v106Date);if(d)d[el.dataset.v106Key]=el.value;return false;}
+ if(el.dataset.v106Item){const item=draft.items.find(x=>String(x.id)===el.dataset.v106Item);if(item)item[el.dataset.v106Key]=['price','qty'].includes(el.dataset.v106Key)?Number(el.value)||0:el.value;return el.dataset.v106Key==='charge';}
+ const field=el.dataset.v106Field;if(!field)return false;
+ if(field==='templateId'){v106ApplyTemplate(el.value);return true;}
+ if(field==='catalog'||field==='space')return false;
+ if(field==='weeks'){draft.recurrence.weeks=Math.max(1,Math.min(26,Number(el.value)||1));draft.dates=v6BuildWeekdates(draft.recurrence).map(d=>({...d,id:idNew(),venueId:draft.venueId}));return true;}
+ if(field==='weekday'){draft.recurrence.days=[Number(el.value)];draft.dates=v6BuildWeekdates(draft.recurrence).map(d=>({...d,id:idNew(),venueId:draft.venueId}));return true;}
+ const numeric=['clientId','venueId','base','minBase','advance','guarantee','attendees'];draft[field]=numeric.includes(field)?Number(el.value)||0:el.value;
+ if(field==='venueId'){draft.templateId=null;draft.templateSnapshot=null;draft.dates.forEach(d=>d.venueId=draft.venueId);draft.items=draft.items.filter(i=>!i.resourceId||Number(resource(i.resourceId)?.venueId)===Number(draft.venueId));return true;}
+ return ['pricing','taxPresentation'].includes(field);
+}
+function v106SaveQuote(){const q=w.v106Draft;assert(q,'No existe una cotización activa.');
+ assert(allowed(current(),q.venueId)&&authorized(current(),'rental',q.venueId),'No tienes autorización para esa sede.');
+ const problems=v6Problems(q),price=v6QuoteCalc(q);if(price.serviceTotal<=0)problems.push('Ingresa un paquete o al menos un concepto con importe mayor a cero.');
+ if(problems.length){w.v106Errors=problems;workerRender();return;}
+ const used=new Set((data.quoteRecordsV6||[]).map(x=>x.number)),year=new Date().getFullYear();let counter=data.quoteRecordsV6.length+1,code='';do{code='COT-'+year+'-'+String(counter++).padStart(5,'0');}while(used.has(code));
+ q.id=idNew();q.number=code;q.version=1;q.createdById=current().id;q.salesOwnerId=role()==='sales'?current().id:null;q.createdAt=now();q.updatedAt=q.createdAt;q.status='Borrador';
+ q.versions=[{version:1,at:q.createdAt,content:copy({...q,versions:[]}),amount:price.serviceTotal}];
+ data.quoteRecordsV6.unshift(copy(q));audit('Cotización comercial creada',{quoteId:q.id,venueId:q.venueId,type:q.v104Kind});persistAll();
+ w.v106Draft=null;w.v106Errors=[];w.v106Step=null;openWorkerModal('eventDetail',q.id);fire('Cotización registrada: '+code);
+}
+// A quote of any kind remains a commercial proposal, not necessarily an event.
+const v106OldEventDetailModal=eventDetailModal;
+eventDetailModal=function(){const html=v106OldEventDetailModal(),proposal=get(data.quoteRecordsV6,w.modalId);if(!proposal)return html;
+ const node=document.createElement('div');node.innerHTML=html;const heading=node.querySelector('.sheet-head h2');if(heading)heading.textContent='Cotización '+(proposal.number||'');
+ const kicker=node.querySelector('.sheet-head .eyebrow');if(kicker)kicker.textContent='COTIZACIÓN COMERCIAL';
+ return node.innerHTML;};
+const v106OldModalView=modalView;
+modalView=function(){if(w.modal==='v106QuoteWizard')return v106QuoteModal();return v106OldModalView();};
+const v106OldWorkerRender=workerRender;
+workerRender=function(...args){const value=v106OldWorkerRender(...args);if(!shadow)return value;
+ v106InstallCss();
+ const nav=shadow.querySelector('#v51-worker-app .bottom-nav');
+ if(nav&&!nav.querySelector('[data-action="v104PageQuotes"]')){
+  const link=document.createElement('button');link.type='button';link.dataset.action='v104PageQuotes';link.className='v106-quote-tab'+(w.page==='quotes'?' active':'');
+  link.innerHTML=ico('file','sm')+'<span>Cotizar</span>';const more=nav.querySelector('[data-target="more"]');if(more)more.before(link);else nav.appendChild(link);
+ }
+ if(w.page==='reservations'&&w.resView==='agenda'&&!w.modal){v106UpdateSwipeLabels();v100BindSwipes();}
+ return value;
+};
+const v106OldWorkerClick=onWorkClick;
+onWorkClick=function(ev){const b=ev.target?.closest?.('[data-action]'),action=b?.dataset.action||'';
+ if(!action)return v106OldWorkerClick(ev);
+ try{
+  if(action==='v106NotYet'){ev.preventDefault();ev.stopPropagation();const r=get(data.v48RentalOps,b.dataset.id);fire('«Jugó» se habilita al terminar el horario'+(r?', a las '+v106EndLabel(r):'')+'.');return;}
+  if(action==='v106QuoteStart'){v106Start(b.dataset.kind);return;}
+  if(action==='v106NewClient'){w.modalReturn='v106QuoteWizard';openWorkerModal('newClient');return;}
+  if(action==='saveClient'&&w.modal==='newClient'&&w.modalReturn==='v106QuoteWizard'){const id=newClient({name:q('w-name')?.value,phone:q('w-phone')?.value,email:q('w-email')?.value});w.v106Draft.clientId=id;w.modalReturn=null;openWorkerModal('v106QuoteWizard');v106ScrollQuote();fire('Cliente registrado.');return;}
+  if(action==='closeModal'&&w.modal==='newClient'&&w.modalReturn==='v106QuoteWizard'){w.modalReturn=null;openWorkerModal('v106QuoteWizard');v106ScrollQuote();return;}
+
+  if(action==='v104StartBirthday'){v106Start('birthday');return;}
+  if(action==='v104StartEvent'){v106Start('event');return;}
+  if(action==='v106QuoteBack'){w.v106Errors=[];w.v106Step=w.v106Step==='terms'?'items':'details';workerRender();v106ScrollQuote();return;}
+  if(action==='v106QuoteNext'){w.v106Errors=[];w.v106Step=w.v106Step==='details'?'items':'terms';workerRender();v106ScrollQuote();return;}
+  if(action==='v106DateAdd'){w.v106Draft.dates.push({id:idNew(),date:dayPlus(day(),1),start:'15:00',end:'18:00',venueId:w.v106Draft.venueId,note:''});workerRender();return;}
+  if(action==='v106DateRemove'){w.v106Draft.dates=w.v106Draft.dates.filter(d=>String(d.id)!==String(b.dataset.id));workerRender();return;}
+  if(action==='v106ItemAdd'){const id=shadow.getElementById('w106-catalog')?.value,src=data.quoteConceptCatalog.find(x=>String(x.id)===String(id)&&x.status==='Activo');assert(src,'Selecciona un concepto del catálogo.');w.v106Draft.items.push({id:idNew(),name:src.name,description:src.description||'',category:src.category||'Servicio',qty:1,unit:src.unit||'Unidad',price:Number(src.price)||0,min:Number(src.min)||0,charge:'extra',resourceId:null,dateId:null});workerRender();return;}
+  if(action==='v106SpaceAdd'){const id=shadow.getElementById('w106-space')?.value,r=data.resources.find(x=>String(x.id)===String(id)&&Number(x.venueId)===Number(w.v106Draft.venueId)&&valid(x));assert(r,'Selecciona una cancha o espacio de la sede.');w.v106Draft.items.push({id:idNew(),name:r.name,description:'Uso de instalación',category:'Instalaciones',qty:1,unit:'Hora',price:0,min:0,charge:'extra',resourceId:r.id,dateId:null});workerRender();return;}
+  if(action==='v106ItemRemove'){w.v106Draft.items=w.v106Draft.items.filter(x=>String(x.id)!==String(b.dataset.id));workerRender();return;}
+  if(action==='v106QuoteSave'){v106SaveQuote();return;}
+ }catch(error){console.error('[Eleva Cotizaciones]',error);fire(error.message||'No se pudo procesar la operación.');return;}
+ return v106OldWorkerClick(ev);
+};
+const v106OldWorkerChange=onWorkChange;
+onWorkChange=function(ev){if(w.modal==='v106QuoteWizard'&&(ev.target.dataset.v106Field||ev.target.dataset.v106Date||ev.target.dataset.v106Item)){
+  try{const redraw=v106HandleField(ev.target);if(redraw)workerRender();}catch(e){fire(e.message||'Revisa los datos.');}return;
+ }return v106OldWorkerChange(ev);};
+const v106OldWorkerInput=onWorkInput;
+onWorkInput=function(ev){if(w.modal==='v106QuoteWizard'&&(ev.target.dataset.v106Field||ev.target.dataset.v106Date||ev.target.dataset.v106Item)){
+  // Save typed values without re-rendering the input while the user is writing.
+  if(['text','number','textarea'].includes(ev.target.type))try{v106HandleField(ev.target);}catch(_){}
+  return;
+ }return v106OldWorkerInput(ev);};
+if(typeof document!=='undefined')document.addEventListener('visibilitychange',()=>{if(!document.hidden){v106UpdateSwipeLabels();v100BindSwipes();}});
+if(typeof window!=='undefined')window.addEventListener('focus',()=>{v106UpdateSwipeLabels();});
+window.ElevaAgendaSwipe.canSwipe=id=>v106Ready(get(data.v48RentalOps,id));
+window.ElevaAgendaSwipe.canComplete=id=>v105CanComplete(get(data.v48RentalOps,id));
 
 render();if(role()!=="admin")mount();
 const v51Observer=new MutationObserver(list=>{if(list.some(m=>m.addedNodes.length&&m.target.closest?.('#content,#overlay,#drawer,#toast,#desktop-sidebar'))){cleanUI();}});v51Observer.observe(document.body,{subtree:true,childList:true});
