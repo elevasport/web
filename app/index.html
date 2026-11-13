@@ -22859,7 +22859,7 @@ function groupsPage(){const groups=groupList().slice().sort((a,b)=>String(a.name
  `<div class="ea-note" style="margin-bottom:14px">Puedes crear, editar, suspender o finalizar grupos de tus sedes autorizadas. Finalizar un grupo no borra alumnos, asistencias ni obligaciones económicas.</div>`+
  (groups.length?`<div class="ea-grid2">${groups.map(t=>{const q=seats(t),ended=['Finalizado','Inactivo','Archivado'].includes(t.status),times=(t.schedule||[]).map(x=>`${days[Number(x.day)]||'?'} ${E(x.start||'')}-${E(x.end||'')}`).join(' · ');const hasPending=(data.academyEnrollments||[]).filter(e=>String(e.turnId)===String(t.id)&&e.ea117NeedsPlacement).length;
  return `<section class="ea-card"><div class="ea-sectionline"><div><h2>${E(t.name)}</h2><p class="ea-muted">${E(program(t.programId))} · ${E(season(t.seasonId))}</p></div>${pill(t.status||'Planificado',ended?'dark':t.status==='Activo'?'green':'amber')}</div><p class="ea-muted" style="margin:0 0 8px">${E(t.category||'Categoría por definir')} · ${E(coach(t.coachId))}</p><p class="ea-muted">${times||'Sin horario'}</p><div class="ea-sectionline" style="margin-top:15px;margin-bottom:0"><strong style="font-size:12px">${q.used} / ${q.capacity} matrículas</strong>${pill(q.free?`${q.free} disponibles`:'Completo',q.free?'green':'amber')}</div><div class="ea-progress"><span style="width:${q.capacity?Math.min(100,Math.round(100*q.used/q.capacity)):0}%"></span></div>${hasPending?`<div class="ea-note ea-warning" style="margin-top:10px">${hasPending} matrícula(s) por reubicar o regularizar.</div>`:''}
- <div class="ea-group-actions">${btn('Ver detalle','group-detail:'+t.id,'outline')}${!ended?btn('Editar grupo','edit-group:'+t.id,'outline'):''}${t.status==='Activo'?btn('Suspender','pause-group:'+t.id,'outline'):t.status==='Suspendido'?btn('Reactivar','resume-group:'+t.id,'outline'):''}${!ended?btn('Finalizar','finalize-group:'+t.id,'outline'):''}${t.status==='Activo'&&q.free?btn('Matricular','enroll-turn:'+t.id,'primary'):''}</div></section>`}).join('')}</div>`:'<div class="ea-empty">Todavía no hay grupos. Puedes crear el primero con el horario, la sede y los profesores asignados.</div>');}
+ <div class="ea-group-actions">${btn('Ver detalle','group-detail:'+t.id,'outline')}${!ended?btn('Editar grupo','edit-group:'+t.id,'outline'):''}${!ended?'<button type="button" class="ea-btn outline" data-ea140-open="'+E(t.id)+'">Vigencia docente</button>':''}${t.status==='Activo'?btn('Suspender','pause-group:'+t.id,'outline'):t.status==='Suspendido'?btn('Reactivar','resume-group:'+t.id,'outline'):''}${!ended?btn('Finalizar','finalize-group:'+t.id,'outline'):''}${t.status==='Activo'&&q.free?btn('Matricular','enroll-turn:'+t.id,'primary'):''}</div></section>`}).join('')}</div>`:'<div class="ea-empty">Todavía no hay grupos. Puedes crear el primero con el horario, la sede y los profesores asignados.</div>');}
 
 // Academia: una cuenta puede operar varias sedes, sin duplicar alumnos ni cobros.
 function allSitesPage(){const sites=siteIds(),turns=(data.academyTurns||[]).filter(t=>sites.includes(Number(t.venueId))),en=(data.academyEnrollments||[]).filter(e=>sites.includes(Number(turn(e.turnId)?.venueId))),studentIds=new Set(en.map(e=>String(e.studentId)));
@@ -23450,7 +23450,7 @@ function schedule(date,staffId=null,siteIds=null){
   if(staffId&&Number(r.openedByEmployeeId)!==Number(staffId)&&Number(r.closedByEmployeeId)!==Number(staffId)&&!assigned(t,staffId))continue;
   if(!list.some(x=>x.key===r.key))list.push({key:r.key,turnId:r.turnId,date:r.date,start:r.start,end:r.end,venueId:r.venueId,turn:t,stored:r,effectiveCoachId:Number(t.coachId)});
  }
- return list.sort((a,b)=>a.start.localeCompare(b.start)||venue(a.venueId).localeCompare(venue(b.venueId)));
+ return list.filter(item=>{if(!staffId||item.stored)return true;const term=item.turn?.ea140TeacherTerms?.[String(staffId)];return !term||(!term.start||date>=term.start)&&(!term.end||date<=term.end);}).sort((a,b)=>a.start.localeCompare(b.start)||venue(a.venueId).localeCompare(venue(b.venueId)));
 }
 function nearestDate(staffId){const today=day();if(schedule(today,staffId).length)return today;for(let n=1;n<=7;n++){const candidate=shiftDate(today,-n);if(schedule(candidate,staffId).length)return candidate;}for(let n=1;n<=30;n++){const candidate=shiftDate(today,n);if(schedule(candidate,staffId).length)return candidate;}return today;}
 function counts(item){const entries=item.stored?.entries||roster(item.turn,item.date);return {entries,present:entries.filter(e=>e.status==='Presente').length,late:entries.filter(e=>e.status==='Tardanza').length,absent:entries.filter(e=>e.status==='Ausente').length,justified:entries.filter(e=>e.status==='Justificada').length,missing:entries.filter(e=>e.status==='Sin marcar').length};}
@@ -23600,7 +23600,7 @@ function shell(head,body,foot=true){
  ${who?`<div class="ea137-profile-box"><button type="button" class="ea137-profile-trigger" data-ea115-act="profile-toggle" aria-label="Abrir mi perfil y el historial" title="Mi perfil" aria-expanded="${!!teacher.profileOpen}">${teacherPhoto(who)}</button>${teacher.profileOpen?teacherProfilePanel(who):''}</div>`:button('Accesos','exit','outline')}
  </header><main class="ea115-main">${head}${body}</main>${foot?`<nav class="ea115-bottom" aria-label="Secciones del profesor">${button(icon('calendar')+' Mis clases','classes',teacher.screen==='classes'?'current':'')}${button(icon('users')+' Alumnos','students','')}${button(icon('clock')+' Horarios','schedule',teacher.screen==='schedule'?'current':'')}${button(icon('package')+' Materiales','materials','')}</nav>`:''}`;
 }
-function teacherHeader(){const selected=teacherStaff(),entries=staffMembers().filter(x=>Number(x.id)===Number(selected?.id));if(teacher.screen==='schedule')return `<div class="ea115-pagehead"><span>ACADEMIA / PROGRAMACIÓN</span><h1>Mis horarios</h1><p>${E(selected?.name||'Personal asignado')} · Programación semanal de tus grupos</p></div>`;return `<div class="ea115-pagehead"><span>ACADEMIA / ${teacher.screen==='history'?'HISTORIAL':'MIS CLASES'}</span><h1>${teacher.screen==='history'?'Historial de clases':'Mis clases'}</h1><p>${E(selected?.name||'Personal asignado')} · ${E(selected?.position||'Profesor / asistente')}</p></div><div class="ea125-topline"><span class="ea137-assignment-note">Solo turnos asignados</span><label class="ea125-date">Consultar fecha<input id="ea115-date" type="date" value="${E(teacher.date||day())}"></label></div>`;}
+function teacherHeader(){const selected=teacherStaff(),entries=staffMembers().filter(x=>Number(x.id)===Number(selected?.id));if(teacher.screen==='schedule')return `<div class="ea115-pagehead"><span>ACADEMIA / PROGRAMACIÓN</span><h1>Mis horarios</h1><p>${E(selected?.name||'Personal asignado')} · Días y horas habituales de tus grupos</p></div>`;return `<div class="ea115-pagehead"><span>ACADEMIA / ${teacher.screen==='history'?'HISTORIAL':'MIS CLASES'}</span><h1>${teacher.screen==='history'?'Historial de clases':'Mis clases'}</h1><p>${E(selected?.name||'Personal asignado')} · ${E(selected?.position||'Profesor / asistente')}</p></div><div class="ea125-topline"><span class="ea137-assignment-note">Solo turnos asignados</span><label class="ea125-date">Consultar fecha<input id="ea115-date" type="date" value="${E(teacher.date||day())}"></label></div>`;}
 function teacherCards(){const me=teacherStaff();if(!me)return '<div class="ea115-empty">No se pudo verificar el personal asignado.</div>';
  const chosen=teacher.screen==='history'?schedule(teacher.date,me.id).filter(x=>x.stored):schedule(teacher.date,me.id);
  const total=chosen.length,closed=chosen.filter(x=>x.stored?.status==='Cerrada').length,missing=chosen.filter(x=>x.turn.status==='Activo'&&x.stored?.status!=='Cerrada'&&x.stored?.status!=='Suspendida').length;
@@ -23611,43 +23611,64 @@ function scheduleMonday(date){const actual=dateValid(date)?date:day();return shi
 function scheduleFormatDate(date,opts){return new Date(date+'T12:00:00').toLocaleDateString('es-PE',opts);}
 function teacherSchedule(){
  const me=teacherStaff();if(!me)return '<div class="ea115-empty">No hay un profesor o asistente seleccionado.</div>';
- const monday=scheduleMonday(teacher.scheduleWeek||day()),dates=Array.from({length:7},(_,i)=>shiftDate(monday,i));
- // Se conserva el mismo calculo oficial que usa Mis clases; no se crea otra agenda.
- const week=dates.flatMap(d=>schedule(d,me.id).map(item=>({...item,weekday:dayNo(d)})));
- const assignedGroups=(data.academyTurns||[]).filter(t=>assigned(t,me.id)&&!['Inactivo','Archivado','Finalizado'].includes(String(t.status)));
- const sites=[...new Set([...assignedGroups.map(t=>String(t.venueId)),...week.map(i=>String(i.venueId))])].filter(x=>x&&x!=='undefined').sort((a,b)=>venue(a).localeCompare(venue(b),'es'));
- const groups=[...new Map([...assignedGroups,...week.map(i=>i.turn)].filter(Boolean).map(t=>[String(t.id),t])).values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es'));
+ const dayNames=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+ const dayOrder=i=>(Number(i)+6)%7;
+ const assignedTurns=(data.academyTurns||[]).filter(t=>
+  (Number(t.coachId)===Number(me.id)||(t.assistantIds||[]).some(id=>Number(id)===Number(me.id))) &&
+  !['Inactivo','Archivado','Finalizado'].includes(String(t.status||'')));
  const f=teacher.scheduleFilters||{day:'all',site:'all',group:'all'};
- const opt=(v,label,selected)=>`<option value="${E(v)}" ${String(selected)===String(v)?'selected':''}>${E(label)}</option>`;
- const dayOpts=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
- const filtered=week.filter(i=>(f.day==='all'||String(i.weekday)===String(f.day))&&(f.site==='all'||String(i.venueId)===String(f.site))&&(f.group==='all'||String(i.turnId)===String(f.group)));
- const fmt=d=>scheduleFormatDate(d,{day:'numeric',month:'short'});
- const interval=fmt(monday)+' – '+fmt(dates[6]);
- const activeFilterCount=Number(f.day!=='all')+Number(f.site!=='all')+Number(f.group!=='all');
- const filtersOpen=!!teacher.scheduleFiltersOpen;
- const daysWithClasses=dates.filter(d=>filtered.some(item=>item.date===d));
- const filters=filtersOpen?`<div class="ea136-filter-panel" id="ea136-filter-panel">
-   <label>Día<select data-ea115-schedule-filter="day">${opt('all','Toda la semana',f.day)}${dayOpts.map((txt,i)=>opt(String((i+1)%7),txt,f.day)).join('')}</select></label>
-   ${sites.length>1?`<label>Sede<select data-ea115-schedule-filter="site">${opt('all','Todas mis sedes',f.site)}${sites.map(id=>opt(id,venue(id),f.site)).join('')}</select></label>`:''}
-   ${groups.length>1?`<label>Grupo<select data-ea115-schedule-filter="group">${opt('all','Todos mis grupos',f.group)}${groups.map(t=>opt(String(t.id),t.name,f.group)).join('')}</select></label>`:''}
-   ${activeFilterCount?button('Quitar filtros','schedule-reset','outline'):''}
- </div>`:'';
- const cards=daysWithClasses.flatMap(d=>filtered.filter(i=>i.date===d).map(item=>{
-   const coach=Number(item.effectiveCoachId||item.turn.coachId)===Number(me.id);
-   const weekday=scheduleFormatDate(d,{weekday:'long'});
-   return `<article class="ea135-slot"><header class="ea136-slot-head"><strong>${E(weekday)} · ${E(fmt(d))}${d===day()?' · Hoy':''}</strong><span class="ea135-time">${E(item.start)}–${E(item.end)}</span></header>
-   <div class="ea136-slot-content"><strong>${E(item.turn.name||'Grupo')}</strong><small>${E(venue(item.venueId))} · ${coach?'Profesor':'Asistente'}</small>${item.turn.category?`<small>${E(item.turn.category)}</small>`:''}</div></article>`;
- })).join('');
- return `<section class="ea135-schedule ea136-schedule" aria-label="Mi programacion semanal">
-  <div class="ea135-week-nav"><div><span class="ea135-overline">PROGRAMACIÓN SEMANAL</span><strong>${E(interval)}</strong><small>${filtered.length} ${filtered.length===1?'clase programada':'clases programadas'}</small></div>
-    <div class="ea135-week-controls">${button('‹','schedule-prev','outline')}${button('Hoy','schedule-today','outline')}${button('›','schedule-next','outline')}</div>
-  </div>
-  <div class="ea136-filter-line"><span>${activeFilterCount?activeFilterCount+' filtro(s) aplicado(s)':'Todas mis asignaciones'}</span>
-    <button type="button" class="ea136-filter-toggle" data-ea115-act="schedule-filter" aria-controls="ea136-filter-panel" aria-expanded="${filtersOpen?'true':'false'}">Filtrar${activeFilterCount?' · '+activeFilterCount:''}</button></div>
-  ${filters}
-  <div class="ea135-week-days">${cards||'<div class="ea115-empty">No hay clases programadas en esta semana con los filtros elegidos. Prueba otra semana o quita los filtros.</div>'}</div>
-  <p class="ea135-note">Solo consulta. Coordinación de Academia asigna los horarios y cambios de cada grupo.</p>
- </section>`;
+ const opts=(value,label,selected)=>'<option value="'+E(value)+'" '+(String(value)===String(selected)?'selected':'')+'>'+E(label)+'</option>';
+ const allSites=[...new Set(assignedTurns.map(t=>String(t.venueId)))].sort((a,b)=>venue(a).localeCompare(venue(b),'es'));
+ const allGroups=assignedTurns.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es'));
+ const avail=assignedTurns.filter(t=>(f.site==='all'||String(t.venueId)===String(f.site))&&(f.group==='all'||String(t.id)===String(f.group)));
+ const starts=[];
+ for(const t of avail){
+  const season=get(data.seasons,t.seasonId),term=t.ea140TeacherTerms?.[String(me.id)]||null;
+  const effectiveStart=term?.start||t.startDate||season?.start||'';
+  const slots=new Map();
+  for(const slot of t.schedule||[]){
+   const weekday=Number(slot.day),start=String(slot.start||'').slice(0,5),end=String(slot.end||'').slice(0,5);
+   if(!Number.isInteger(weekday)||weekday<0||weekday>6||!/^\d\d:\d\d$/.test(start)||!/^\d\d:\d\d$/.test(end))continue;
+   if(f.day!=='all'&&String(weekday)!==String(f.day))continue;
+   const key=start+'|'+end;
+   if(!slots.has(key))slots.set(key,{start,end,days:[]});
+   if(!slots.get(key).days.includes(weekday))slots.get(key).days.push(weekday);
+  }
+  for(const slot of slots.values())starts.push({turn:t,season,term,effectiveStart,...slot});
+ }
+ const formatDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||''))?
+  new Date(d+'T12:00:00').toLocaleDateString('es-PE',{day:'numeric',month:'short',year:'numeric'}):'Por definir';
+ const days=items=>{
+  const ds=[...new Set(items)].sort((a,b)=>dayOrder(a)-dayOrder(b));
+  if(!ds.length)return 'Días por definir';
+  if(ds.length===1)return dayNames[ds[0]];
+  if(ds.length===2)return dayNames[ds[0]]+' y '+dayNames[ds[1]].toLowerCase();
+  return ds.map(d=>dayNames[d]).join(' · ');
+ };
+ starts.sort((a,b)=>dayOrder(a.days[0])-dayOrder(b.days[0])||a.start.localeCompare(b.start)||venue(a.turn.venueId).localeCompare(venue(b.turn.venueId),'es'));
+ const filtersOpen=!!teacher.scheduleFiltersOpen,filterCount=Number(f.day!=='all')+Number(f.site!=='all')+Number(f.group!=='all');
+ const choices=filtersOpen?'<div class="ea140-filter-fields" id="ea140-teacher-filters">'+
+  '<label>Día<select data-ea115-schedule-filter="day">'+opts('all','Todos los días',f.day)+dayNames.map((name,i)=>opts(String(i),name,f.day)).join('')+'</select></label>'+
+  (allSites.length>1?'<label>Sede<select data-ea115-schedule-filter="site">'+opts('all','Todas mis sedes',f.site)+allSites.map(id=>opts(id,venue(id),f.site)).join('')+'</select></label>':'')+
+  (allGroups.length>1?'<label>Grupo<select data-ea115-schedule-filter="group">'+opts('all','Todos mis grupos',f.group)+allGroups.map(t=>opts(String(t.id),t.name,f.group)).join('')+'</select></label>':'')+
+  (filterCount?button('Quitar filtros','schedule-reset','outline'):'')+'</div>':'';
+ const cards=starts.map(x=>{
+  const role=Number(x.turn.coachId)===Number(me.id)?'Profesor':'Asistente';
+  const until=x.term?.end?'Hasta el '+formatDate(x.term.end):'Sin fecha de fin de asignación';
+  const limited=x.turn.endDate||x.season?.end;
+  return '<article class="ea140-weekly-card"><header class="ea140-weekly-head"><strong>'+E(days(x.days))+'</strong><span>'+E(x.start)+'–'+E(x.end)+'</span></header>'+
+   '<div class="ea140-weekly-content"><strong>'+E(x.turn.name||'Grupo')+'</strong><small>'+E(venue(x.turn.venueId))+' · '+E(role)+'</small>'+
+   (x.turn.category?'<small>'+E(x.turn.category)+'</small>':'')+
+   '<div class="ea140-assignment-term"><div><span>Desde</span><b>'+E(formatDate(x.effectiveStart))+'</b></div><div><span>Finalización</span><b>'+E(until)+'</b></div></div>'+
+   (limited?'<p>Programación sujeta a la vigencia del grupo/temporada (hasta '+E(formatDate(limited))+').</p>':'')+
+   '</div></article>';
+ }).join('');
+ const showFilters=allGroups.length>1||allSites.length>1||filterCount>0;
+ return '<section class="ea140-teacher-schedule" aria-label="Mis horarios semanales habituales">'+
+   '<div class="ea140-schedule-intro"><div><strong>Horario habitual</strong><small>'+starts.length+' '+(starts.length===1?'bloque asignado':'bloques asignados')+'</small></div>'+
+   (showFilters?'<button class="ea136-filter-toggle" type="button" data-ea115-act="schedule-filter" aria-controls="ea140-teacher-filters" aria-expanded="'+String(filtersOpen)+'">Filtrar'+(filterCount?' · '+filterCount:'')+'</button>':'')+'</div>'+choices+
+   '<div class="ea140-weekly-list">'+(cards||'<div class="ea115-empty">No tienes horarios habituales con estos filtros. Las sustituciones por fecha aparecen en «Mis clases».</div>')+'</div>'+
+   '<p class="ea140-teacher-note">Coordinación de Academia configura estas asignaciones. Los cambios de fechas concretas y las sustituciones se consultan en «Mis clases».</p></section>';
 }
 function teacherDetail(item){const rec=item.stored,c=counts(item),isOpen=rec?.status==='Abierta',readOnly=!teacherAllowed(item)||!isOpen,allDone=c.entries.length>0&&c.missing===0,hasEvidence=!!(rec?.ea126Photo?.key||rec?.ea126PhotoException?.reasonCode);
  const allowed=['Presente','Tardanza','Ausente','Justificada'],me=teacherStaff(),staffRow=(rec?.staffAttendances||[]).find(x=>Number(x.employeeId)===Number(me?.id));
@@ -25006,8 +25027,32 @@ function scopedRows(){const query=UI.query.trim().toLocaleLowerCase('es');let al
 function header(){return `<header class="ea130-header"><div><span class="ea130-kicker">ELEVA SPORT · ACADEMIA</span><strong>${UI.mode==='teacher'?'Mis alumnos':UI.mode==='coordinator'?'Seguimiento de alumnos':'Desarrollo de alumnos'}</strong></div>${UI.mode==='admin'?'<button type="button" class="ea131-admin-entry" data-ea131-catalog="1">Pruebas técnicas</button>':''}<button type="button" data-ea130-action="close" aria-label="Cerrar">✕</button></header>`;}
 function navBack(){return `<button class="ea130-back" type="button" data-ea130-action="back">‹ ${UI.screen==='edit'?'Volver al perfil':UI.mode==='teacher'?'Mis alumnos':'Seguimiento'}</button>`;}
 function listHTML(){const rows=scopedRows();const groups=allowedTurnIds();return `<div class="ea130-lead"><h1>Mis alumnos</h1><p>Consulta el desarrollo de los alumnos de tus grupos asignados. No hace falta registrar una evaluación después de cada clase.</p></div><label class="ea130-field">Buscar alumno<input id="ea130-search" type="search" placeholder="Nombre del alumno" value="${E(UI.query)}"></label><label class="ea130-field ea130-group-field">Grupo<select id="ea130-group-filter" aria-label="Filtrar alumnos por grupo"><option value="all">Todos mis grupos</option>${groups.map(id=>`<option value="${E(id)}" ${String(UI.groupFilter)===String(id)?'selected':''}>${E(turn(id)?.name||'Grupo')} · ${E(venue(turn(id)?.venueId))}</option>`).join('')}</select></label><div class="ea130-list-count">${rows.length} alumno(s) · ${groups.length} grupo(s)</div>${rows.map(x=>{const s=student(x.studentId),t=turn(x.turnId),r=latestPublished(x.studentId,x.turnId),draft=evaluations(x.studentId,x.turnId).find(e=>e.status==='Borrador');return `<button class="ea130-student-row" type="button" data-ea130-action="student:${x.studentId}:${x.turnId}">${photo(s)}<span class="ea130-rowinfo"><strong>${E(s.name)}</strong><small>${E(t?.name||'Grupo')} · ${E(venue(t?.venueId))}</small><small>${draft?'Borrador por revisar':r?'Seguimiento publicado':'Pendiente de primera evaluación'}</small></span><span class="ea130-arrow">›</span></button>`;}).join('')||'<div class="ea130-empty">No hay alumnos activos y autorizados en tus grupos asignados.</div>'}`;}
+function ea140TeacherContacts(sid,tid){
+ if(UI.mode!=='teacher'||!teacherIdentity()||!scopeCanStudent(sid,tid))return '';
+ const s=student(sid);if(!s)return '';
+ const gs=(data.academicGuardians||[]).filter(g=>String(g.studentId)===String(sid));
+ const guardian=gs.find(g=>g.isPrimary===true)||gs.find(g=>g.isPayer===true)||gs[0]||null;
+ const parentName=String(guardian?.name||s.v35ParentName||s.guardian||'').trim();
+ const parentPhone=String(guardian?.phone||s.v35ParentPhone||s.phone||'').trim();
+ const emergencyName=String(s.emergencyName||'').trim();
+ const emergencyPhone=String(s.emergencyPhone||'').trim();
+ const digits=phone=>String(phone||'').replace(/[^\d+]/g,'').replace(/\+(?=.)/g,'').replace(/^\+/,'');
+ const valid=phone=>/^\d{7,15}$/.test(digits(phone));
+ const whatsapp=phone=>{const n=digits(phone);return /^9\d{8}$/.test(n)?'51'+n:/^519\d{8}$/.test(n)?n:null;};
+ const actions=(phone,isGuardian)=>{
+   if(!valid(phone))return '<span class="ea140-unavailable">Teléfono no registrado</span>';
+   const d=digits(phone),wa=isGuardian?whatsapp(phone):null;
+   return '<div class="ea140-contact-actions"><a href="tel:+'+E(d)+'" class="ea140-contact-action" aria-label="Llamar al contacto">Llamar</a>'+
+       (wa?'<a class="ea140-contact-action whatsapp" href="https://wa.me/'+E(wa)+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del apoderado">WhatsApp</a>':'')+'</div>';
+ };
+ const card=(label,name,phone,isGuardian)=>'<section class="ea140-contact-card"><div class="ea140-contact-identity"><small>'+E(label)+'</small><strong>'+E(name||'No registrado')+'</strong><span>'+E(phone||'Teléfono no registrado')+'</span></div>'+actions(phone,isGuardian)+'</section>';
+ return '<section class="ea140-contacts" aria-label="Contactos autorizados para el alumno"><div class="ea140-contacts-title"><h3>Contactos del alumno</h3><small>Para coordinación y emergencias</small></div><div class="ea140-contacts-grid">'+
+ card('Madre, padre o apoderado'+(guardian?.relationship?' · '+guardian.relationship:''),parentName,parentPhone,true)+
+ card('Contacto de emergencia',emergencyName,emergencyPhone,false)+
+ '</div><p class="ea140-contacts-hint">Solo consulta del profesor asignado. Para corregir contactos, solicita la actualización a Coordinación.</p></section>';
+}
 function studentHTML(){const sid=UI.studentId,tid=UI.turnId,s=student(sid),t=turn(tid);if(!s||!t||!scopeCanStudent(sid,tid))return '<div class="ea130-empty">Alumno fuera de tus grupos autorizados.</div>';const pub=latestPublished(sid,tid),draft=evaluations(sid,tid).find(r=>r.status==='Borrador'),teacher=UI.mode==='teacher',me=teacherIdentity()?.id;
- return navBack()+infoCard(sid,tid)+goalCard(pub)+metricsCard(pub)+attendanceTrend(sid,tid)+`<div class="ea130-actions">${teacher?`<button class="ea130-btn primary" data-ea130-action="${draft?'edit:'+draft.id:'new'}">${draft?'Continuar borrador':'Nueva evaluación'}</button>`:''}${draft?pill('Borrador pendiente','amber'):''}</div>`+progression(sid,tid)+publishedHistory(sid,tid)+(window.ElevaStudentTests?.staffPanel(sid,tid,UI.mode)||'')+(teacher?`<p class="ea130-help">${isCoach(me,tid)?'Como entrenador responsable puedes revisar y publicar.':'Como asistente puedes preparar borradores; solo el entrenador responsable los publica.'}</p>`:'');}
+ return navBack()+infoCard(sid,tid)+(teacher?ea140TeacherContacts(sid,tid):'')+goalCard(pub)+metricsCard(pub)+attendanceTrend(sid,tid)+`<div class="ea130-actions">${teacher?`<button class="ea130-btn primary" data-ea130-action="${draft?'edit:'+draft.id:'new'}">${draft?'Continuar borrador':'Nueva evaluación'}</button>`:''}${draft?pill('Borrador pendiente','amber'):''}</div>`+progression(sid,tid)+publishedHistory(sid,tid)+(window.ElevaStudentTests?.staffPanel(sid,tid,UI.mode)||'')+(teacher?`<p class="ea130-help">${isCoach(me,tid)?'Como entrenador responsable puedes revisar y publicar.':'Como asistente puedes preparar borradores; solo el entrenador responsable los publica.'}</p>`:'');}
 function dashboard(){const tids=allowedTurnIds().filter(id=>turn(id)?.status==='Activo'),rows=tids.flatMap(id=>allTurnEnrollments(id).map(e=>({sid:e.studentId,tid:Number(id)}))),uniq=new Set(rows.map(x=>String(x.sid))),evaluated=rows.filter(x=>latestPublished(x.sid,x.tid)).length,pending=rows.filter(x=>!latestPublished(x.sid,x.tid)),drafts=rows.filter(x=>evaluations(x.sid,x.tid).some(r=>r.status==='Borrador'));return `<div class="ea130-lead"><h1>Seguimiento académico</h1><p>Supervisa el cumplimiento por grupo. El entrenador es responsable de validar las evaluaciones.</p></div><div class="ea130-stats3"><div><small>ALUMNOS</small><strong>${uniq.size}</strong></div><div><small>SEGUIMIENTOS</small><strong>${evaluated}</strong></div><div><small>PENDIENTES</small><strong>${pending.length}</strong></div></div><div class="ea130-box"><h3>Por revisar</h3>${drafts.length?`<p>${drafts.length} evaluación(es) en borrador, pendientes de revisión del entrenador.</p>`:'<p>No existen borradores pendientes en los grupos visibles.</p>'}</div><div class="ea130-box"><h3>Grupos y cobertura</h3>${tids.map(id=>{const t=turn(id),ss=allTurnEnrollments(id),count=ss.filter(e=>latestPublished(e.studentId,id)).length;return `<button class="ea130-group-row" data-ea130-action="group:${id}"><span><strong>${E(t?.name||'Grupo')}</strong><small>${E(venue(t?.venueId))} · ${count} de ${ss.length} evaluados</small></span><span>›</span></button>`;}).join('')||'<p>No hay grupos activos en las sedes autorizadas.</p>'}</div><p class="ea130-help">El seguimiento es una tarea docente. Coordinación supervisa avances y pendientes, sin aprobar cada evaluación individual.</p>${window.ElevaStudentTests?.dashboardPanel(UI.mode,allowedTurnIds())||''}`;}
 function coordGroup(){const tid=UI.turnId,t=turn(tid);if(!allowedTurnIds().includes(String(tid)))return '<div class="ea130-empty">Grupo no autorizado.</div>';return navBack()+`<div class="ea130-lead"><h1>${E(t?.name||'Grupo')}</h1><p>${E(venue(t?.venueId))} · Seguimiento individual</p></div>`+allTurnEnrollments(tid).map(e=>{const sid=e.studentId,s=student(sid),r=latestPublished(sid,tid),d=evaluations(sid,tid).find(x=>x.status==='Borrador');return `<button class="ea130-student-row" data-ea130-action="student:${sid}:${tid}">${photo(s)}<span class="ea130-rowinfo"><strong>${E(s.name)}</strong><small>${r?'Evaluado · '+E(dateText(r.publishedAt)):'Sin seguimiento publicado'}${d?' · Borrador pendiente':''}</small></span><span class="ea130-arrow">›</span></button>`;}).join('');}
 function coordStudent(){const sid=UI.studentId,allowed=allowedTurnIds(),ens=(data.academyEnrollments||[]).filter(e=>String(e.studentId)===String(sid)&&allowed.includes(String(e.turnId)));if(!ens.length)return navBack()+'<div class="ea130-empty">No hay una matrícula vinculada a una sede autorizada.</div>';const tid=UI.turnId&&ens.some(e=>String(e.turnId)===String(UI.turnId))?UI.turnId:ens[0].turnId;UI.turnId=Number(tid);return studentHTML();}
@@ -25519,7 +25564,11 @@ async function login(empId,pin){
  ui.mode='staff';ui.staffId=Number(empId);ui.tab='home';ui.error='';ui.venue=String(g.sites[0]);ui.screen='';
  render();
 }
-function open(mode){if(!window.V32?.db||!window.V42?.db)return alert('Inventario no está disponible.');ui.modeBefore=mode;ui.fromTeacher=false;ui.staffId=null;ui.screen='';ui.error='';ui.message='';ui.tab='home';if(mode==='admin'){if(!admin())return alert('Ingresa como Administrador General.');ui.mode='admin';ui.venue=String(data.venues?.[0]?.id||'');}else if(mode==='teacher'){const eid=isTeacher();if(!eid||!grant(eid))return alert('No tienes permiso para Mis materiales. Solicita autorización a Administración.');ui.fromTeacher=true;ui.mode='teacher';ui.staffId=eid;ui.venue=grant(eid)?.sites?.[0]||'';ui.tab='custody';}else{ui.mode='login';eu?.classList.add('eu-off');if(eu)eu.style.display='none';}root.classList.add('is-open');render();root.scrollTop=0;}
+function open(mode){if(!window.V32?.db||!window.V42?.db)return alert('Inventario no está disponible.');ui.modeBefore=mode;ui.fromTeacher=false;ui.staffId=null;ui.screen='';ui.error='';ui.message='';ui.tab='home';if(mode==='admin'){if(!admin())return alert('Ingresa como Administrador General.');ui.mode='admin';ui.venue=String(data.venues?.[0]?.id||'');}else if(mode==='teacher'){const eid=isTeacher();if(!eid||!grant(eid))return alert('No tienes permiso para Mis materiales. Solicita autorización a Administración.');ui.fromTeacher=true;ui.mode='teacher';ui.staffId=eid;// Abrir primero la sede donde el profesor ya tenga material bajo custodia.
+ const assignedSites=(grant(eid)?.sites||[]).map(String).filter(s=>employee(eid)?.venues?.map(String).includes(s));
+ const withCustody=assignedSites.filter(sid=>staffStock(eid,sid).some(x=>x.units>0));
+ const stockedUvatuba=withCustody.find(sid=>sid==='2'&&staffStock(eid,sid).some(x=>String(x.code||'').startsWith('SI-')));
+ ui.venue=stockedUvatuba||withCustody[0]||assignedSites[0]||'';ui.tab='custody';}else{ui.mode='login';eu?.classList.add('eu-off');if(eu)eu.style.display='none';}root.classList.add('is-open');render();root.scrollTop=0;}
 function close(){root.classList.remove('is-open');root.innerHTML='';ui.mode='';ui.staffId=null;ui.error='';if(!ui.fromTeacher&&ui.modeBefore!=='admin')window.ElevaUnificado?.showChooser?.();}
 function header(){const who=ui.mode==='admin'?'Administrador General':employee(ui.staffId)?.name||'Acceso de personal';return `<header class="l116-head"><div class="l116-head-top"><div><span class="l116-brand">ELEVA SPORT</span><h1>${(ui.mode==='teacher'||(ui.mode==='staff'&&employee(ui.staffId)?.vPracticeRole==='profesor'))?'Mis materiales':ui.mode==='login'?'Acceso a Logística':'Almacén y Logística'}</h1><p>${esc(who)} · ${ui.mode==='login'?'Navegación local por perfil':ui.mode==='admin'?'Operación y permisos':'Materiales de mis sedes'}</p></div><button class="l116-close" type="button" data-l116="close" aria-label="Volver">Volver</button></div></header>`;}
 const allowedTabs=()=>ui.mode==='admin'?['home','stock','moves','requests','uniforms','staff']:(ui.mode==='teacher'||(ui.mode==='staff'&&employee(ui.staffId)?.vPracticeRole==='profesor'))?['custody','warehouses','requests','moves']:['home','stock','moves','requests','uniforms'];
@@ -25541,7 +25590,7 @@ function warehousesReadOnlyView(){
  }).join('');
  return '<div class="l116-toolbar"><div><h2>Disponibilidad en almacenes</h2><p class="l116-muted">Consulta las existencias físicas de otras sedes, sin precios ni operaciones de caja.</p></div></div><label class="l116-field l119-warehouse-filter">Sede<select id="l116-warehouse-filter">'+options+'</select></label><p class="l116-note">Solo consulta. Si necesitas un material de otra sede, solicita su traslado al personal de Almacén. No se descuenta inventario desde esta vista.</p>'+(sections||'<div class="l116-note">Aún no hay almacenes configurados.</div>');
 }
-function custodyView(){const sid=site(),rows=staffStock(ui.staffId,sid);return `<div class="l116-toolbar"><h2>Material bajo mi custodia</h2><div class="l116-quickactions">${authorized('request',sid)?b('+ Solicitar material','new-request','primary'):''}${authorized('returns',sid)?b('Devolver implementos','new-return'):''}</div></div>${rows.map(x=>`<div class="l116-listline"><div class="l116-grow"><strong>${esc(title(x.id))}</strong><small>${esc(x.type)} · ${esc(x.code||'Sin código')}</small></div><strong>${x.units} ${esc(x.unit||'ud.')}</strong></div>`).join('')||'<div class="l116-note">Aún no tienes materiales recibidos. Una asignación aparece aquí cuando confirmas la recepción.</div>'}`;}
+function custodyView(){const sid=site(),rows=staffStock(ui.staffId,sid);return `<div class="l116-toolbar"><h2>Material bajo mi custodia</h2><div class="l116-quickactions">${authorized('request',sid)?b('+ Solicitar material','new-request','primary'):''}${authorized('returns',sid)?b('Devolver implementos','new-return'):''}</div></div>${rows.map(x=>`<div class="l116-listline"><div class="l116-grow"><strong>${esc(title(x.id))}</strong><small>${esc(x.type)} · ${esc(x.code||'Sin código')}</small></div><strong>${x.units} ${esc(String(x.unit||'ud.')==='unidad'&&Number(x.units)!==1?'unidades':x.unit||'ud.')}</strong></div>`).join('')||'<div class="l116-note">Aún no tienes materiales recibidos. Una asignación aparece aquí cuando confirmas la recepción.</div>'}`;}
 function requestsView(){const sid=site();const list=(inv()?.requests||[]).filter(r=>String(r.venueId)===sid&&(ui.mode==='admin'||authorized('requests',sid)||Number(r.employeeId)===Number(ui.staffId))).slice().reverse();return `<div class="l116-toolbar"><h2>Solicitudes de materiales</h2>${authorized('request',sid)?b('+ Nueva solicitud','new-request','primary'):''}</div><p class="l116-muted">Las solicitudes con varios artículos utilizan los mismos registros del inventario. Solo el despacho cambia la cantidad disponible.</p>${list.map(r=>`<article class="l116-card"><div class="l116-row"><div class="l116-grow"><h3>${esc(title(r.articleId))} · ${r.qty} unidades</h3><p>${esc(employee(r.employeeId)?.name||'Personal')} · ${esc(r.note)}</p><small class="l116-mini">${esc(r.v116BatchId?'Solicitud '+r.v116BatchId:'Solicitud de Inventario')}</small></div>${status(r.status,r.status==='Pendiente'?'wait':'')}${r.status==='Pendiente'&&authorized('dispatch',sid)?b('Despachar','dispatch:'+r.id,'primary'):''}</div></article>`).join('')||'<div class="l116-note">Sin solicitudes para esta sede.</div>'}`;}
 function movesView(){const sid=site(),rows=moveItems(sid).slice().reverse().slice(0,80);return `<div class="l116-toolbar"><h2>Movimientos y recepciones</h2><div class="l116-quickactions">${authorized('dispatch',sid)?b('Nuevo traslado','new-transfer','primary'):''}${authorized('returns',sid)?b('Devolver','new-return'):''}</div></div>${rows.map(m=>`<article class="l116-card"><div class="l116-row"><div class="l116-grow"><h3>${esc(title(m.articleId))} · ${m.qty} ${esc(article(m.articleId)?.unit||'ud.')}</h3><p>${esc(m.type)} · ${esc(loc(m.from)?.name||'Salida')} → ${esc(loc(m.to)?.name||'Entrega')} · ${esc(m.date)}</p><small class="l116-mini">${esc(m.note||'')} · ${esc(m.createdBy||'')}</small></div>${status(m.status,m.status==='En tránsito'?'wait':'')}${receivable(m)?b('Recibir','receive:'+m.id,'primary'):''}</div></article>`).join('')||'<div class="l116-note">Sin movimientos en esta sede.</div>'}`;}
 function uniformsView(){const sid=site(),from=ui.mode==='teacher'?staffStock(ui.staffId,sid).filter(p=>p.type==='uniform'):stockAt(sid).filter(p=>p.type==='uniform');const possible=enrollments(sid).filter(x=>x.status==='Activa'&&(!x.validation||x.validation==='Autorizada')&&teacherAssigned(x.studentId));const unique=new Map();for(const e of possible)if(st(e.studentId)&&!unique.has(String(e.studentId)))unique.set(String(e.studentId),st(e.studentId));return `<div class="l116-toolbar"><div><h2>Uniformes de academia</h2><p class="l116-muted">Tallas y entregas vinculadas al alumno. No se generan ventas ni cargos.</p></div>${authorized('deliver',sid)?b('Entregar uniforme','new-delivery','primary'):''}</div><div class="l116-grid3"><div class="l116-stat"><small>Alumnos habilitados</small><strong>${unique.size}</strong></div><div class="l116-stat"><small>Prendas disponibles</small><strong>${from.reduce((s,x)=>s+x.units,0)}</strong></div><div class="l116-stat"><small>Entregas de sede</small><strong>${(merch()?.deliveries||[]).filter(d=>String(d.venueId)===sid&&d.status==='Entregada').length}</strong></div></div><div class="l116-sections">${[...unique.values()].slice(0,70).map(s=>`<div class="l116-listline"><div class="l116-grow"><strong>${esc(s.name)}</strong><small>Ficha de matrícula activa · ${esc(fullVenue(sid))}</small></div>${status('Entrega registrada: '+(merch()?.deliveries||[]).filter(d=>String(d.studentId)===String(s.id)&&d.status==='Entregada').length,'off')}</div>`).join('')||'<div class="l116-note">Sin matrículas activas y autorizadas en esta sede.</div>'}</div>`;}
@@ -27784,7 +27833,170 @@ body.v51-workspace #eu-provisional-global-nav{top:78px}
  }};
 })();
 </script>
+<script id="ea138-san-isidro-profesor-custodia">
+/* ELEVA SPORT — una sola asignación de apertura a custodia docente.
+   Origen: los dos movimientos EA137 iniciales (10 unidades cada uno).
+   No genera compras, ventas, egresos ni entradas adicionales de stock.
+   No se aplica a existencias previamente modificadas o inventarios ajenos. */
+(function(){
+ 'use strict';
+ if(typeof data==='undefined'||!Array.isArray(data.employees)||!window.V32?.db)return;
+ const emp=data.employees.find(x=>Number(x.id)===4&&Array.isArray(x.venues)&&x.venues.map(String).includes('2')&&/entrenador|profesor/i.test(String(x.position||'')));
+ if(!emp)return;
+ const db=window.V32.db();
+ if(!db||!Array.isArray(db.movements)||!Array.isArray(db.articles)||!Array.isArray(db.locations))return;
+ const custody='cust-'+Number(emp.id)+'-2';
+ const stamp=new Date().toISOString();
+ const localDate=(()=>{const f=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Lima',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());return [f.find(x=>x.type==='year')?.value,f.find(x=>x.type==='month')?.value,f.find(x=>x.type==='day')?.value].join('-');})();
+ let count=0;
+ for(const code of ['SI-CHAL-001','SI-PEL-001']){
+   const opening=db.movements.find(x=>String(x.id)==='EA137-INICIAL-'+code&&x.ea137InitialStock===true&&x.type==='inicial'&&Number(x.qty)===10&&x.status==='Registrado');
+   if(!opening)continue;
+   const art=db.articles.find(x=>String(x.id)===String(opening.articleId)&&x.active!==false);
+   const src=db.locations.find(x=>String(x.id)===String(opening.to)&&x.type==='warehouse'&&String(x.venueId)==='2');
+   if(!art||!src)continue;
+   const id='EA138-CUSTODIA-'+code+'-'+Number(emp.id)+'-2';
+   if(db.movements.some(x=>String(x.id)===id||x.ea138InitialCustody===true&&String(x.articleId)===String(art.id)&&Number(x.employeeId)===Number(emp.id)))continue;
+   // No tocar lotes con movimientos posteriores: evita alterar entregas,
+   // devoluciones, bajas o existencias reales registradas por el usuario.
+   const touched=db.movements.some(x=>String(x.articleId)===String(art.id)&&String(x.id)!==String(opening.id)&&
+    (String(x.from)===String(src.id)||String(x.to)===String(src.id)||String(x.from)===custody||String(x.to)===custody));
+   if(touched)continue;
+   if(Number(window.V32.stock(art.id,src.id))!==10||Number(window.V32.stock(art.id,custody))!==0)continue;
+   db.movements.push({
+     id,type:'asignacion',articleId:art.id,qty:10,
+     from:src.id,to:custody,employeeId:Number(emp.id),venueId:2,
+     status:'Recibido',date:localDate,createdAt:stamp,receivedAt:stamp,
+     createdBy:'Configuración inicial del inventario',receivedBy:'Saldo inicial bajo custodia',
+     note:'Asignación inicial bajo custodia de '+emp.name+' · San Isidro Uva Tuba · Sin nuevo ingreso ni pago',
+     ea138InitialCustody:true,ea138SourceMovementId:opening.id,
+     ea138UnverifiedPhysicalHandover:true
+   });
+   count++;
+ }
+ if(count){
+   if(!Array.isArray(data.audit))data.audit=[];
+   data.audit.unshift({id:'EA138-AUDIT-'+Date.now(),who:'Configuración inicial del inventario',action:'Asignación inicial de '+count+' artículo(s) al profesor '+emp.name,area:'Almacén y Logística',time:new Date().toLocaleString('es-PE',{timeZone:'America/Lima'})});
+   if(typeof persist==='function')persist();
+ }
+ window.ElevaCustodiaInicialUvatuba={employeeId:emp.id,venueId:2,view:()=>['SI-CHAL-001','SI-PEL-001'].map(code=>{
+   const opening=db.movements.find(x=>String(x.id)==='EA137-INICIAL-'+code);
+   if(!opening)return {code,warehouse:0,custody:0};
+   return {code,warehouse:window.V32.stock(opening.articleId,opening.to),custody:window.V32.stock(opening.articleId,custody)};
+ })};
+})();
+</script>
 
+
+<style id="ea140-contactos-horario-css">
+#ea130-development-root .ea140-contacts{border:1px solid #dfe9e3;background:#fff;border-radius:15px;padding:16px;display:grid;gap:12px}
+#ea130-development-root .ea140-contacts-title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+#ea130-development-root .ea140-contacts-title h3{font-size:15px;color:#12232d;margin:0}
+#ea130-development-root .ea140-contacts-title small{font-size:10px;color:#75897e}
+#ea130-development-root .ea140-contacts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+#ea130-development-root .ea140-contact-card{display:flex;flex-direction:column;justify-content:space-between;gap:12px;border:1px solid #e2ece5;border-radius:12px;padding:14px;min-width:0;background:#f9fbfa}
+#ea130-development-root .ea140-contact-identity{display:grid;gap:4px;overflow-wrap:anywhere}
+#ea130-development-root .ea140-contact-identity small{font-size:10px;color:#2d8052;font-weight:750}
+#ea130-development-root .ea140-contact-identity strong{font-size:13px;color:#12232d;line-height:1.35}
+#ea130-development-root .ea140-contact-identity span{font-size:12px;color:#5c7269}
+#ea130-development-root .ea140-contact-actions{display:flex;gap:8px;flex-wrap:wrap}
+#ea130-development-root .ea140-contact-action{background:#12232d;border:1px solid #12232d;border-radius:9px;color:#fff;padding:9px 13px;font-size:12px;font-weight:750;text-decoration:none;min-height:38px;display:inline-flex;align-items:center}
+#ea130-development-root .ea140-contact-action.whatsapp{color:#186541;background:white;border-color:#cfe1d5}
+#ea130-development-root .ea140-unavailable{font-size:11px;color:#8a978e}
+#ea130-development-root .ea140-contacts-hint{font-size:10px;color:#7b8e83;margin:0;line-height:1.55}
+#ea115-teacher-root .ea140-teacher-schedule{max-width:850px;margin:0 auto;display:grid;gap:12px}
+#ea115-teacher-root .ea140-schedule-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0 5px}
+#ea115-teacher-root .ea140-schedule-intro>div{display:grid;gap:4px}
+#ea115-teacher-root .ea140-schedule-intro strong{font-size:16px;letter-spacing:-.025em}
+#ea115-teacher-root .ea140-schedule-intro small{font-size:11px;color:#768a7b}
+#ea115-teacher-root .ea140-filter-fields{background:white;border:1px solid #e2eae5;border-radius:13px;padding:13px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+#ea115-teacher-root .ea140-filter-fields label{display:grid;gap:6px;font-size:11px;font-weight:720;color:#43634d}
+#ea115-teacher-root .ea140-filter-fields select{min-height:42px;background:white;border:1px solid #dbe7df;border-radius:10px;padding:8px;width:100%;color:#12232d}
+#ea115-teacher-root .ea140-weekly-list{display:grid;gap:10px}
+#ea115-teacher-root .ea140-weekly-card{background:white;border:1px solid #e0eae4;border-radius:15px;overflow:hidden}
+#ea115-teacher-root .ea140-weekly-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#12232d;color:white}
+#ea115-teacher-root .ea140-weekly-head strong,#ea115-teacher-root .ea140-weekly-head span{font-size:12.5px;font-weight:750;color:white;line-height:1.35}
+#ea115-teacher-root .ea140-weekly-head span{font-variant-numeric:tabular-nums;white-space:nowrap}
+#ea115-teacher-root .ea140-weekly-content{padding:13px 15px;display:grid;gap:5px}
+#ea115-teacher-root .ea140-weekly-content>strong{font-size:14px;color:#12232d}
+#ea115-teacher-root .ea140-weekly-content>small{font-size:11px;color:#74877d}
+#ea115-teacher-root .ea140-assignment-term{margin-top:7px;border-top:1px solid #e9eeeb;padding-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#ea115-teacher-root .ea140-assignment-term>div{display:grid;gap:3px}
+#ea115-teacher-root .ea140-assignment-term span{font-size:10px;color:#798c82}
+#ea115-teacher-root .ea140-assignment-term b{font-size:11.5px;color:#2f5946}
+#ea115-teacher-root .ea140-weekly-content p{font-size:10px;color:#829087;margin:4px 0 0}
+#ea115-teacher-root .ea140-teacher-note{background:#f0f6f2;border-radius:11px;padding:12px;color:#637c6d;font-size:10.5px;line-height:1.5;margin:2px 0 0}
+#ea140-terms-dialog{border:0;border-radius:18px;padding:0;width:min(650px,calc(100vw - 24px));max-height:90dvh;box-shadow:0 24px 85px #071d2760;color:#12232d;font-family:Inter,Arial,sans-serif}
+#ea140-terms-dialog::backdrop{background:#091a22ad}
+#ea140-terms-dialog *{box-sizing:border-box}
+#ea140-terms-dialog .ea140-dialog-body{padding:22px;overflow:auto;max-height:88dvh;display:grid;gap:12px}
+#ea140-terms-dialog .ea140-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}
+#ea140-terms-dialog h2{margin:0;font-size:21px}
+#ea140-terms-dialog p{margin:0;color:#708277;font-size:11px;line-height:1.5}
+#ea140-terms-dialog .ea140-person{border:1px solid #e0e9e3;border-radius:12px;padding:13px;display:grid;gap:11px}
+#ea140-terms-dialog .ea140-person>strong{font-size:13px}
+#ea140-terms-dialog .ea140-date-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#ea140-terms-dialog label{display:grid;gap:6px;font-size:11px;font-weight:720;color:#476450}
+#ea140-terms-dialog input{border:1px solid #dbe6dd;border-radius:9px;min-height:42px;background:#fff;color:#12232d;padding:9px 10px;font:inherit;font-size:13px;min-width:0}
+#ea140-terms-dialog .ea140-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:10px;border-top:1px solid #e7eee9}
+#ea140-terms-dialog button{min-height:40px;border:1px solid #dbe6dd;border-radius:10px;background:#fff;color:#12232d;padding:9px 14px;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+#ea140-terms-dialog button[type=submit]{background:#12232d;color:#fff;border-color:#12232d}
+#ea140-terms-dialog .ea140-error{color:#a53030;font-size:11px;min-height:13px}
+@media(max-width:600px){#ea130-development-root .ea140-contacts-grid{grid-template-columns:1fr}#ea115-teacher-root .ea140-weekly-head{padding:11px 12px}#ea115-teacher-root .ea140-weekly-head strong,#ea115-teacher-root .ea140-weekly-head span{font-size:11.5px}#ea140-terms-dialog .ea140-dialog-body{padding:16px}#ea140-terms-dialog .ea140-date-fields{grid-template-columns:1fr 1fr}}
+</style>
+<dialog id="ea140-terms-dialog" aria-label="Vigencia de los docentes"></dialog>
+<script id="ea140-teacher-assignments">
+(function(){
+ 'use strict';
+ const dialog=document.getElementById('ea140-terms-dialog');
+ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const find=(arr,id)=>(arr||[]).find(x=>String(x.id)===String(id));
+ const fmt=x=>/^\d{4}-\d{2}-\d{2}$/.test(String(x||''));
+ const current=()=>find(data.academyTurns,dialog.dataset.turnId);
+ const eligible=t=>{
+  const p=document.getElementById('ea-academia-portal'),api=window.ElevaAcademyEtapa1;
+  return !!api&&p?.classList.contains('ea-visible')&&(api._test.siteIds()||[]).map(String).includes(String(t?.venueId));
+ };
+ function open(id){
+  const t=find(data.academyTurns,id);if(!t||!eligible(t))return;
+  const season=find(data.seasons,t.seasonId);
+  const first=t.startDate||season?.start||'',last=t.endDate||season?.end||'';
+  const ids=[Number(t.coachId),...(t.assistantIds||[]).map(Number)].filter((x,i,a)=>x>0&&a.indexOf(x)===i);
+  dialog.dataset.turnId=String(t.id);
+  dialog.innerHTML='<form class="ea140-dialog-body" id="ea140-terms-form"><div class="ea140-dialog-head"><div><h2>Vigencia docente</h2><p>'+esc(t.name)+' · '+esc(find(data.venues,t.venueId)?.name||'Sede')+'</p></div><button type="button" data-ea140-close aria-label="Cerrar">✕</button></div>'+
+   '<p>Define desde cuándo participa cada docente. Puedes dejar el fin vacío; el grupo y la temporada mantienen sus propios límites de programación y pagos.</p>'+
+   (ids.length?ids.map(id=>{const who=find(data.employees,id),term=t.ea140TeacherTerms?.[String(id)]||{};
+    return '<section class="ea140-person" data-staff="'+id+'"><strong>'+esc(who?.name||'Docente')+(Number(t.coachId)===id?' · Profesor':' · Asistente')+'</strong><div class="ea140-date-fields">'+
+      '<label>Inicio *<input type="date" name="start_'+id+'" required min="'+esc(first)+'" max="'+esc(last)+'" value="'+esc(term.start||first)+'"></label>'+
+      '<label>Fin (opcional)<input type="date" name="end_'+id+'" min="'+esc(first)+'" max="'+esc(last)+'" value="'+esc(term.end||'')+'"></label></div></section>';
+   }).join(''):'<p>Este grupo aún no tiene profesores asignados. Edita el grupo primero.</p>')+
+   '<div id="ea140-error" class="ea140-error" role="alert"></div><div class="ea140-dialog-actions"><button type="button" data-ea140-close>Cancelar</button>'+
+   (ids.length?'<button type="submit">Guardar asignaciones</button>':'')+'</div></form>';
+  if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
+ }
+ dialog.addEventListener('click',e=>{if(e.target.closest('[data-ea140-close]'))dialog.close();});
+ dialog.addEventListener('submit',e=>{
+  if(e.target.id!=='ea140-terms-form')return;e.preventDefault();const t=current(),err=dialog.querySelector('#ea140-error');
+  if(!t||!eligible(t)){err.textContent='No tienes acceso a este grupo.';return;}
+  const season=find(data.seasons,t.seasonId),first=t.startDate||season?.start||'',last=t.endDate||season?.end||'';
+  const ids=[Number(t.coachId),...(t.assistantIds||[]).map(Number)].filter((x,i,a)=>x>0&&a.indexOf(x)===i);
+  const form=new FormData(e.target),terms={...(t.ea140TeacherTerms||{})};
+  for(const id of ids){
+   const start=String(form.get('start_'+id)||''),end=String(form.get('end_'+id)||'');
+   if(!fmt(start)||start<first||start>last||end&&( !fmt(end)||end<start||end>last)){
+    err.textContent='Revisa las fechas: el inicio es obligatorio y ambas fechas deben estar dentro del período del grupo.';return;
+   }
+   terms[String(id)]={start,end:end||null,updatedAt:new Date().toISOString()};
+  }
+  t.ea140TeacherTerms=terms;
+  (data.audit??=[]).unshift({id:Date.now()+Math.random(),area:'Academia / Vigencia docente',action:'Asignaciones de docentes actualizadas',who:'Coordinación de Academia',time:new Date().toLocaleString('es-PE'),groupId:t.id});
+  if(typeof persist==='function')persist();else if(typeof persistAll==='function')persistAll();
+  dialog.close();window.ElevaAcademyEtapa1?.render?.();
+ });
+ document.addEventListener('click',e=>{const button=e.target.closest?.('[data-ea140-open]');if(!button)return;e.preventDefault();open(button.dataset.ea140Open);},true);
+ window.ElevaTeacherTerms={open,get:(turnId,staffId)=>find(data.academyTurns,turnId)?.ea140TeacherTerms?.[String(staffId)]||null};
+})();
+</script>
 </body>
 </html>
 
