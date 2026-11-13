@@ -23589,33 +23589,42 @@ function scheduleMonday(date){const actual=dateValid(date)?date:day();return shi
 function scheduleFormatDate(date,opts){return new Date(date+'T12:00:00').toLocaleDateString('es-PE',opts);}
 function teacherSchedule(){
  const me=teacherStaff();if(!me)return '<div class="ea115-empty">No hay un profesor o asistente seleccionado.</div>';
- const monday=scheduleMonday(teacher.scheduleWeek||day());
- const dates=Array.from({length:7},(_,i)=>shiftDate(monday,i));
- // La misma agenda oficial alimenta Mis clases y Mis horarios, incluidas sustituciones y cambios por fecha.
+ const monday=scheduleMonday(teacher.scheduleWeek||day()),dates=Array.from({length:7},(_,i)=>shiftDate(monday,i));
+ // Se conserva el mismo calculo oficial que usa Mis clases; no se crea otra agenda.
  const week=dates.flatMap(d=>schedule(d,me.id).map(item=>({...item,weekday:dayNo(d)})));
  const assignedGroups=(data.academyTurns||[]).filter(t=>assigned(t,me.id)&&!['Inactivo','Archivado','Finalizado'].includes(String(t.status)));
  const sites=[...new Set([...assignedGroups.map(t=>String(t.venueId)),...week.map(i=>String(i.venueId))])].filter(x=>x&&x!=='undefined').sort((a,b)=>venue(a).localeCompare(venue(b),'es'));
  const groups=[...new Map([...assignedGroups,...week.map(i=>i.turn)].filter(Boolean).map(t=>[String(t.id),t])).values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es'));
  const f=teacher.scheduleFilters||{day:'all',site:'all',group:'all'};
- const opt=(val,text,selected)=>`<option value="${E(val)}" ${String(selected)===String(val)?'selected':''}>${E(text)}</option>`;
+ const opt=(v,label,selected)=>`<option value="${E(v)}" ${String(selected)===String(v)?'selected':''}>${E(label)}</option>`;
  const dayOpts=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
  const filtered=week.filter(i=>(f.day==='all'||String(i.weekday)===String(f.day))&&(f.site==='all'||String(i.venueId)===String(f.site))&&(f.group==='all'||String(i.turnId)===String(f.group)));
  const fmt=d=>scheduleFormatDate(d,{day:'numeric',month:'short'});
  const interval=fmt(monday)+' – '+fmt(dates[6]);
- const today=day();
- // No llenamos la pantalla con dias vacios cuando se consulta la semana completa.
- const shownDays=dates.filter(d=>(f.day==='all'||String(dayNo(d))===String(f.day))&&(f.day!=='all'||filtered.some(item=>item.date===d)));
- return `<section class="ea135-schedule" aria-label="Mi programación semanal">
- <div class="ea135-week-nav"><div><span class="ea135-overline">SEMANA SELECCIONADA</span><strong>${E(interval)}</strong><small>${week.length} clase(s) asignada(s) esta semana</small></div>
- <div class="ea135-week-controls">${button('‹','schedule-prev','outline')}${button('Hoy','schedule-today','outline')}${button('›','schedule-next','outline')}</div></div>
- <div class="ea135-filters">
- <label>Día<select data-ea115-schedule-filter="day">${opt('all','Toda la semana',f.day)}${dayOpts.map((txt,i)=>opt(String((i+1)%7),txt,f.day)).join('')}</select></label>
- <label>Sede<select data-ea115-schedule-filter="site">${opt('all','Todas mis sedes',f.site)}${sites.map(id=>opt(id,venue(id),f.site)).join('')}</select></label>
- <label>Grupo<select data-ea115-schedule-filter="group">${opt('all','Todos mis grupos',f.group)}${groups.map(t=>opt(String(t.id),t.name,f.group)).join('')}</select></label>
- </div>
- <div class="ea135-summary"><span><strong>${filtered.length}</strong> clases para los filtros elegidos</span><span>${sites.length} sede(s) asignada(s)</span></div>
- <div class="ea135-week-days">${shownDays.length?shownDays.map(d=>{const items=filtered.filter(item=>item.date===d);return `<section class="ea135-day"><header class="ea135-day-head"><div><strong>${E(scheduleFormatDate(d,{weekday:'long'}))}</strong><small>${E(fmt(d))}${d===today?' · Hoy':''}</small></div><span>${items.length} clase(s)</span></header>${items.length?items.map(item=>{const coach=Number(item.effectiveCoachId||item.turn.coachId)===Number(me.id);return `<article class="ea135-slot"><span class="ea135-time">${E(item.start)}–${E(item.end)}</span><div class="ea135-slot-info"><strong>${E(item.turn.name||'Grupo')}</strong><small>${E(venue(item.venueId))} · ${coach?'Profesor':'Asistente'}</small>${item.turn.category?`<small>${E(item.turn.category)}</small>`:''}</div></article>`;}).join(''):'<div class="ea135-empty-day">Sin clases programadas</div>'}</section>`;}).join(''):'<div class="ea115-empty">No hay clases programadas para esta semana con los filtros elegidos. Revisa otra semana o ajusta los filtros.</div>'}</div>
- <p class="ea135-note">Solo consulta. Los horarios, las sedes y los grupos se asignan desde Coordinación de Academia. Los cambios oficiales se reflejan aquí automáticamente.</p>
+ const activeFilterCount=Number(f.day!=='all')+Number(f.site!=='all')+Number(f.group!=='all');
+ const filtersOpen=!!teacher.scheduleFiltersOpen;
+ const daysWithClasses=dates.filter(d=>filtered.some(item=>item.date===d));
+ const filters=filtersOpen?`<div class="ea136-filter-panel" id="ea136-filter-panel">
+   <label>Día<select data-ea115-schedule-filter="day">${opt('all','Toda la semana',f.day)}${dayOpts.map((txt,i)=>opt(String((i+1)%7),txt,f.day)).join('')}</select></label>
+   ${sites.length>1?`<label>Sede<select data-ea115-schedule-filter="site">${opt('all','Todas mis sedes',f.site)}${sites.map(id=>opt(id,venue(id),f.site)).join('')}</select></label>`:''}
+   ${groups.length>1?`<label>Grupo<select data-ea115-schedule-filter="group">${opt('all','Todos mis grupos',f.group)}${groups.map(t=>opt(String(t.id),t.name,f.group)).join('')}</select></label>`:''}
+   ${activeFilterCount?button('Quitar filtros','schedule-reset','outline'):''}
+ </div>`:'';
+ const cards=daysWithClasses.flatMap(d=>filtered.filter(i=>i.date===d).map(item=>{
+   const coach=Number(item.effectiveCoachId||item.turn.coachId)===Number(me.id);
+   const weekday=scheduleFormatDate(d,{weekday:'long'});
+   return `<article class="ea135-slot"><header class="ea136-slot-head"><strong>${E(weekday)} · ${E(fmt(d))}${d===day()?' · Hoy':''}</strong><span class="ea135-time">${E(item.start)}–${E(item.end)}</span></header>
+   <div class="ea136-slot-content"><strong>${E(item.turn.name||'Grupo')}</strong><small>${E(venue(item.venueId))} · ${coach?'Profesor':'Asistente'}</small>${item.turn.category?`<small>${E(item.turn.category)}</small>`:''}</div></article>`;
+ })).join('');
+ return `<section class="ea135-schedule ea136-schedule" aria-label="Mi programacion semanal">
+  <div class="ea135-week-nav"><div><span class="ea135-overline">PROGRAMACIÓN SEMANAL</span><strong>${E(interval)}</strong><small>${filtered.length} ${filtered.length===1?'clase programada':'clases programadas'}</small></div>
+    <div class="ea135-week-controls">${button('‹','schedule-prev','outline')}${button('Hoy','schedule-today','outline')}${button('›','schedule-next','outline')}</div>
+  </div>
+  <div class="ea136-filter-line"><span>${activeFilterCount?activeFilterCount+' filtro(s) aplicado(s)':'Todas mis asignaciones'}</span>
+    <button type="button" class="ea136-filter-toggle" data-ea115-act="schedule-filter" aria-controls="ea136-filter-panel" aria-expanded="${filtersOpen?'true':'false'}">Filtrar${activeFilterCount?' · '+activeFilterCount:''}</button></div>
+  ${filters}
+  <div class="ea135-week-days">${cards||'<div class="ea115-empty">No hay clases programadas en esta semana con los filtros elegidos. Prueba otra semana o quita los filtros.</div>'}</div>
+  <p class="ea135-note">Solo consulta. Coordinación de Academia asigna los horarios y cambios de cada grupo.</p>
  </section>`;
 }
 function teacherDetail(item){const rec=item.stored,c=counts(item),isOpen=rec?.status==='Abierta',readOnly=!teacherAllowed(item)||!isOpen,allDone=c.entries.length>0&&c.missing===0,hasEvidence=!!(rec?.ea126Photo?.key||rec?.ea126PhotoException?.reasonCode);
@@ -23642,7 +23651,7 @@ function teacherDetail(item){const rec=item.stored,c=counts(item),isOpen=rec?.st
  ${teacher.confirmClose&&isOpen?`<div class="ea115-confirm" role="alert"><strong>Confirmación de cierre de clase</strong><p>${!allDone?`Faltan ${c.missing} alumnos por marcar. Completa la asistencia.`:!hasEvidence?'Antes del cierre toma la foto grupal desde el movil o registra una incidencia justificada.':'Se registrara la hora real de cierre. La lista quedara bloqueada. Si hay incidencia fotografica, Coordinacion debera revisarla.'}</p><button type="button" class="ea115-btn primary" data-ea115-act="confirm-close" ${allDone&&hasEvidence?'':'disabled'}>Confirmar finalización</button> ${button('Volver','cancel-close','outline')}</div>`:''}
  ${rec?.status==='Cerrada'?`<div class="ea115-note">Clase finalizada por ${E(name(rec.closedByEmployeeId))} el ${E(timeLima(rec.closedAt))}. Inicio: ${E(timeLima(rec.openedAt))}.</div>`:''}`;
 }
-function renderTeacher(){if(!teacherRoot.classList.contains('ea115-open'))return;if(photoState.stream){endCameraStream();photoState.mode='idle';}if(!teacherStaff()){teacherRoot.innerHTML=shell('',teacherLogin(),false);return;}let body='',foot=true;if(teacher.key){const item=schedule(teacher.date,teacherStaff()?.id).find(x=>x.key===teacher.key);if(!item){teacher.key=null;body=teacherHeader()+teacherCards();}else{body=teacherDetail(item);foot=false;}}else body=teacherHeader()+(teacher.screen==='schedule'?teacherSchedule():teacherCards());teacherRoot.innerHTML=shell('',body,foot);hydratePhotoImages(teacherRoot);}
+function renderTeacher(){if(!teacherRoot.classList.contains('ea115-open'))return;if(photoState.stream){endCameraStream();photoState.mode='idle';}if(!teacherStaff()){teacherRoot.innerHTML=shell('',teacherLogin(),false);return;}let body='',foot=true;if(teacher.key){const item=schedule(teacher.date,teacherStaff()?.id).find(x=>x.key===teacher.key);if(!item){teacher.key=null;body=teacherHeader()+teacherCards();}else{body=teacherDetail(item);foot=true;}}else body=teacherHeader()+(teacher.screen==='schedule'?teacherSchedule():teacherCards());teacherRoot.innerHTML=shell('',body,foot);hydratePhotoImages(teacherRoot);}
 function requireTeacherItem(){const me=teacherStaff();const item=schedule(teacher.date,me?.id).find(x=>x.key===teacher.key);if(!item||!me||!assigned(item.turn,me.id))throw Error('Esta clase no est\u00e1 asignada a tu usuario.');return {item,me};}
 function editable(){const {item,me}=requireTeacherItem();if(!teacherAllowed(item))throw Error('La clase debe estar activa, ser de una fecha transcurrida y de los \u00faltimos siete d\u00edas.');if(!item.stored||item.stored.status!=='Abierta'||!item.stored.openedAt)throw Error('Inicia la clase antes de registrar asistencias.');return {item,me};}
 function ensureRecord(item,employeeId){let rec=sessionForKey(item.key);if(rec)return rec;const entries=roster(item.turn,item.date);rec={id:'EA-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),key:item.key,turnId:Number(item.turnId),venueId:Number(item.venueId),date:item.date,start:item.start,end:item.end,status:'Programada',entries,createdAt:new Date().toISOString(),createdByEmployeeId:Number(employeeId),authorizedCloserEmployeeId:null,closedAt:null,closedByEmployeeId:null,suspendReason:'',history:[]};if(records().some(x=>x.key===rec.key))return sessionForKey(rec.key);records().push(rec);return rec;}
@@ -23672,7 +23681,8 @@ teacherRoot.addEventListener('click',e=>{const mark=e.target.closest('[data-ea11
  const btn=e.target.closest('[data-ea115-act]');if(!btn)return;e.preventDefault();const a=btn.dataset.ea115Act;try{if(a==='exit')return closeTeacher();if(!teacherStaff())return;
  if(a==='students'){window.ElevaStudentDevelopment?.openTeacher?.();return;}
  if(a==='materials'){window.ElevaLogistica?.openTeacher?.();return;}
- if(a==='schedule'){resetPhotoFlow();teacher.screen='schedule';teacher.key=null;teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};renderTeacher();teacherRoot.scrollTop=0;return;}
+ if(a==='schedule'){resetPhotoFlow();teacher.screen='schedule';teacher.key=null;teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};teacher.scheduleFiltersOpen=false;renderTeacher();teacherRoot.scrollTop=0;return;}
+ if(a==='schedule-filter'){teacher.scheduleFiltersOpen=!teacher.scheduleFiltersOpen;renderTeacher();return;}
  if(['schedule-prev','schedule-next','schedule-today','schedule-reset'].includes(a)){if(a==='schedule-reset')teacher.scheduleFilters={day:'all',site:'all',group:'all'};else teacher.scheduleWeek=a==='schedule-today'?day():shiftDate(scheduleMonday(teacher.scheduleWeek||day()),a==='schedule-prev'?-7:7);renderTeacher();teacherRoot.scrollTop=0;return;}
  if(a==='classes'||a==='history'){resetPhotoFlow();teacher.screen=a;teacher.key=null;teacher.confirmClose=false;teacher.noteStudentId=null;renderTeacher();return;}
  if(a==='back'){resetPhotoFlow();teacher.key=null;teacher.noteStudentId=null;teacher.confirmClose=false;renderTeacher();return;}
@@ -27990,5 +28000,117 @@ body:has(#ea-academia-portal.ea-visible .ea-modalveil) #eu-provisional-global-na
  document.addEventListener('keydown',function(e){
   if(e.key==='Escape' && portal.querySelector('.ea-photo-preview-veil')){e.stopPropagation();dismiss();}
  },true);
+})();
+</script>
+
+<style id="ea136-teacher-nav-week-polish">
+/* Profesor/Asistente: solo presentacion y navegacion, mismo origen de horarios. */
+#ea115-teacher-root .ea136-schedule{max-width:850px;gap:12px}
+#ea115-teacher-root .ea136-schedule .ea135-week-nav{padding:14px 15px;flex-wrap:nowrap}
+#ea115-teacher-root .ea136-schedule .ea135-overline{font-size:9px}
+#ea115-teacher-root .ea136-schedule .ea135-week-nav strong{font-size:16px}
+#ea115-teacher-root .ea136-schedule .ea135-week-controls{flex-shrink:0}
+#ea115-teacher-root .ea136-schedule .ea135-week-controls .ea115-btn{min-width:34px;min-height:35px;padding:7px 9px}
+#ea115-teacher-root .ea136-filter-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 2px;min-height:35px;color:#6a8175;font-size:11px}
+#ea115-teacher-root .ea136-filter-toggle{display:inline-flex;align-items:center;gap:6px;min-height:35px;border:1px solid #d7e3da;background:#fff;color:#24523d;border-radius:10px;padding:7px 11px;font-size:11px;font-weight:780;white-space:nowrap}
+#ea115-teacher-root .ea136-filter-toggle svg{width:15px;height:15px}
+#ea115-teacher-root .ea136-filter-panel{background:#fff;border:1px solid #e1eae5;border-radius:13px;padding:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end}
+#ea115-teacher-root .ea136-filter-panel label{display:grid;gap:5px;font-size:11px;font-weight:760;color:#4a6a56;min-width:0}
+#ea115-teacher-root .ea136-filter-panel select{width:100%;min-width:0;border:1px solid #d6e2da;border-radius:9px;background:#fff;color:#12232d;min-height:41px;padding:9px 10px;font-size:13px}
+#ea115-teacher-root .ea136-filter-panel .ea115-btn{justify-self:start}
+#ea115-teacher-root .ea136-schedule .ea135-week-days{display:grid;gap:10px}
+#ea115-teacher-root .ea136-schedule .ea135-slot{display:block;padding:0;margin:0;border:1px solid #e1eae5;border-radius:15px;overflow:hidden;background:#fff}
+#ea115-teacher-root .ea136-schedule .ea135-slot+.ea135-slot{border:1px solid #e1eae5}
+#ea115-teacher-root .ea136-slot-head{background:#12232d;display:flex;justify-content:space-between;align-items:center;gap:10px;color:#fff;padding:11px 14px}
+#ea115-teacher-root .ea136-slot-head strong{font-size:12px;font-weight:760;text-transform:capitalize;letter-spacing:0;line-height:1.3;color:#fff}
+#ea115-teacher-root .ea136-slot-head .ea135-time{background:transparent;border:0;border-radius:0;padding:0;color:#fff;letter-spacing:0;line-height:1.3;font-size:12px;font-weight:760;white-space:nowrap;flex-shrink:0}
+#ea115-teacher-root .ea136-slot-content{padding:13px 15px;display:grid;gap:5px}
+#ea115-teacher-root .ea136-slot-content>strong{font-size:14px;color:#12232d;line-height:1.3;letter-spacing:-.01em}
+#ea115-teacher-root .ea136-slot-content>small{font-size:11.5px;color:#74867c;line-height:1.4}
+#ea115-teacher-root .ea136-schedule .ea135-note{padding:9px 12px;font-size:10.5px;line-height:1.45;margin:0}
+/* El portal de desarrollo abre encima de Mis clases. Conservar la barra docente. */
+#ea130-development-root .ea136-shared-dock,#eleva116-root .ea136-shared-dock{
+ position:fixed;bottom:0;left:0;right:0;z-index:50;display:grid;
+ grid-template-columns:repeat(5,minmax(0,102px));justify-content:center;gap:5px;
+ background:#fff;border-top:1px solid #e1eae5;
+ padding:8px 12px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 17px #12232d08;
+}
+#ea130-development-root .ea136-shared-dock .ea115-btn,#eleva116-root .ea136-shared-dock .ea115-btn{
+ display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;
+ background:transparent;border:0;border-radius:11px;color:#7b9186;font-weight:730;
+ min-height:57px;padding:7px 3px;font-size:11px;line-height:1.15;cursor:pointer;min-width:0;
+}
+#ea130-development-root .ea136-shared-dock .ea115-btn.current,#eleva116-root .ea136-shared-dock .ea115-btn.current{background:#eaf6ee;color:#157e40}
+#ea130-development-root .ea136-shared-dock .ea115-btn svg,#eleva116-root .ea136-shared-dock .ea115-btn svg{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#ea130-development-root.ea130-visible .ea130-main{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+#eleva116-root.is-open .l116-main{padding-bottom:calc(115px + env(safe-area-inset-bottom))}
+/* Provisional menu: fijarlo en la cabecera docente, nunca encima de tarjetas o dock. */
+html:has(#ea115-teacher-root.ea115-open) #eu-provisional-global-nav,
+html:has(#ea130-development-root.ea130-visible) #eu-provisional-global-nav{
+ top:17px;right:14px;bottom:auto;gap:6px;
+}
+html:has(#ea115-teacher-root.ea115-open) #eu-provisional-global-nav .eu-provisional-home,
+html:has(#ea130-development-root.ea130-visible) #eu-provisional-global-nav .eu-provisional-home{
+ background:#243d45;color:#fff;border:1px solid #577078;box-shadow:none;
+}
+html:has(#ea130-development-root.ea130-visible) #ea130-development-root .ea130-header{padding-right:125px}
+html:has(#ea115-teacher-root.ea115-open) #ea115-teacher-root .ea115-header{padding-right:125px}
+@media(max-width:700px){
+ #ea115-teacher-root .ea136-filter-panel{grid-template-columns:repeat(2,minmax(0,1fr))}
+ html:has(#ea115-teacher-root.ea115-open) #eu-provisional-global-nav .eu-provisional-area,
+ html:has(#ea130-development-root.ea130-visible) #eu-provisional-global-nav .eu-provisional-area{display:none!important}
+ #ea115-teacher-root .ea136-slot-head{padding:10px 12px}
+ #ea115-teacher-root .ea136-slot-content{padding:12px}
+ #ea115-teacher-root .ea136-schedule .ea135-week-nav{gap:10px;padding:12px}
+ #ea115-teacher-root .ea136-schedule .ea135-week-nav strong{font-size:15px}
+ #ea130-development-root .ea136-shared-dock,#eleva116-root .ea136-shared-dock{grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:7px 6px calc(7px + env(safe-area-inset-bottom))}
+ #ea130-development-root .ea136-shared-dock .ea115-btn,#eleva116-root .ea136-shared-dock .ea115-btn{font-size:10.5px;min-height:55px;padding:7px 1px}
+}
+@media(max-width:380px){
+ #ea115-teacher-root .ea136-filter-panel{grid-template-columns:minmax(0,1fr)}
+ #ea115-teacher-root .ea136-slot-head strong{font-size:11px}
+ #ea115-teacher-root .ea136-slot-head .ea135-time{font-size:11px}
+}
+</style>
+
+<script id="ea136-teacher-nav-week-controller">
+(function(){
+ 'use strict';
+ const teacherRoot=document.getElementById('ea115-teacher-root');
+ const devRoot=document.getElementById('ea130-development-root');
+ const logisticsRoot=document.getElementById('eleva116-root');
+ if(!teacherRoot||!devRoot||!logisticsRoot)return;
+ function putDock(target,tab){
+  const teacher=window.ElevaAcademyEtapa3?._test?.teacher;
+  if(!teacher?.staffId||!teacherRoot.classList.contains('ea115-open'))return;
+  const source=teacherRoot.querySelector('nav.ea115-bottom');
+  if(!source||target.querySelector(':scope > nav.ea136-shared-dock'))return;
+  const dock=source.cloneNode(true);
+  dock.className='ea136-shared-dock';dock.setAttribute('aria-label','Menu permanente del Profesor');
+  for(const b of dock.querySelectorAll('[data-ea115-act]')){
+   const key=b.dataset.ea115Act;
+   b.classList.toggle('current',key===tab);
+   b.addEventListener('click',ev=>{
+    ev.preventDefault();ev.stopPropagation();
+    if(key===tab)return;
+    // Cerrar solamente la vista superpuesta; no cerrar sesion ni guardar/borrar registros.
+    if(target===devRoot)window.ElevaStudentDevelopment?.close?.();
+    if(target===logisticsRoot)window.ElevaLogistica?.close?.();
+    if(key==='students')window.ElevaStudentDevelopment?.openTeacher?.();
+    else if(key==='materials')window.ElevaLogistica?.openTeacher?.();
+    else teacherRoot.querySelector('.ea115-bottom [data-ea115-act="'+key+'"]')?.click();
+   });
+  }
+  target.appendChild(dock);
+ }
+ function sync(){
+  const dev=window.ElevaStudentDevelopment?._test?.UI;
+  if(devRoot.classList.contains('ea130-visible')&&dev?.mode==='teacher')putDock(devRoot,'students');
+  const log=window.ElevaLogistica?._test?.ui;
+  if(logisticsRoot.classList.contains('is-open')&&log?.mode==='teacher')putDock(logisticsRoot,'materials');
+ }
+ new MutationObserver(sync).observe(devRoot,{childList:true,attributes:true,attributeFilter:['class']});
+ new MutationObserver(sync).observe(logisticsRoot,{childList:true,attributes:true,attributeFilter:['class']});
+ sync();
 })();
 </script>
