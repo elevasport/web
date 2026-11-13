@@ -724,7 +724,7 @@ const now=()=>new Date().toLocaleString('es-PE',{day:'2-digit',month:'2-digit',y
 const copy=x=>JSON.parse(JSON.stringify(x));
 const randId=()=>Date.now()+Math.floor(Math.random()*100000);
 const seed={
- venues:[{id:1,name:'Sede Principal',area:'Trujillo',active:true,opening:'06:00 – 00:30'},{id:2,name:'Sede Norte',area:'Trujillo',active:true,opening:'07:00 – 23:00'},{id:3,name:'Sede Industrial',area:'Trujillo',active:true,opening:'08:00 – 22:00'}],
+ venues:[{id:1,name:'Sede Principal',area:'Trujillo',active:true,opening:'06:00 – 00:30'},{id:2,name:'San Isidro Uva Tuba',area:'Trujillo',active:true,opening:'07:00 – 23:00'},{id:3,name:'Sede Industrial',area:'Trujillo',active:true,opening:'08:00 – 22:00'}],
  resources:[{id:11,venueId:1,name:'Cancha 1',type:'Cancha multideportiva'},{id:12,venueId:1,name:'Cancha 2',type:'Cancha de fútbol'},{id:13,venueId:1,name:'Cancha 3',type:'Cancha de fútbol'},{id:14,venueId:1,name:'Sede completa (1 + 2 + 3)',type:'Combinación de espacios'},{id:21,venueId:2,name:'Cancha A',type:'Cancha de fútbol'},{id:22,venueId:2,name:'Cancha B',type:'Cancha de fútbol'},{id:31,venueId:3,name:'Cancha 1',type:'Cancha de fútbol'},{id:32,venueId:3,name:'Salón multiuso',type:'Salón / evento'}],
  services:[{id:1,name:'Alquiler de cancha',kind:'Servicio',business:'Alquileres',unit:'Hora',included:'Uso del espacio reservado'},{id:2,name:'Cumpleaños deportivo',kind:'Paquete',business:'Eventos',unit:'Evento',included:'Espacio, animación y organización'},{id:3,name:'Evento corporativo',kind:'Paquete',business:'Eventos',unit:'Jornada',included:'Espacio, coordinación y montaje'},{id:4,name:'Arbitraje',kind:'Servicio',business:'Eventos',unit:'Partido',included:'Árbitro asignado'},{id:5,name:'Uso exclusivo de sede',kind:'Servicio',business:'Eventos',unit:'Jornada',included:'Instalaciones definidas en la cotización'}],
  rates:[
@@ -23455,7 +23455,7 @@ function schedule(date,staffId=null,siteIds=null){
 function nearestDate(staffId){const today=day();if(schedule(today,staffId).length)return today;for(let n=1;n<=7;n++){const candidate=shiftDate(today,-n);if(schedule(candidate,staffId).length)return candidate;}for(let n=1;n<=30;n++){const candidate=shiftDate(today,n);if(schedule(candidate,staffId).length)return candidate;}return today;}
 function counts(item){const entries=item.stored?.entries||roster(item.turn,item.date);return {entries,present:entries.filter(e=>e.status==='Presente').length,late:entries.filter(e=>e.status==='Tardanza').length,absent:entries.filter(e=>e.status==='Ausente').length,justified:entries.filter(e=>e.status==='Justificada').length,missing:entries.filter(e=>e.status==='Sin marcar').length};}
 function summaryStatus(item){if(item.stored?.status==='Suspendida')return ['Suspendida','muted'];if(item.stored?.status==='Cerrada')return ['Cerrada','good'];if(item.turn.status!=='Activo')return ['Planificada','muted'];if(item.stored?.status==='Abierta')return ['En clase','good'];if(item.stored?.status==='Programada')return ['Pendiente de apertura','warning'];if(item.stored)return ['En revisión','warning'];return ageDays(item.date)>0?['Sin registrar','warning']:['Pendiente','muted'];}
-const teacher={staffId:null,date:null,key:null,noteStudentId:null,confirmClose:false,screen:'classes',scheduleWeek:day(),scheduleFilters:{day:'all',site:'all',group:'all'},error:'',busy:false,photoExceptionOpen:false,photoClearance:false,photoReplaceMode:false,closing:false};
+const teacher={staffId:null,date:null,key:null,noteStudentId:null,confirmClose:false,profileOpen:false,screen:'classes',scheduleWeek:day(),scheduleFilters:{day:'all',site:'all',group:'all'},error:'',busy:false,photoExceptionOpen:false,photoClearance:false,photoReplaceMode:false,closing:false};
 function teacherStaff(){return staffMembers().find(e=>String(e.id)===String(teacher.staffId)&&staffAccess()[String(e.id)]?.active!==false)||null;}
 function teacherAllowed(item){const me=teacherStaff();return !!me&&assignedForSession(item,me.id)&&item.turn.status==='Activo'&&ageDays(item.date)>=0&&(ageDays(item.date)<=7||item.stored?.ea115CorrectionAuthorized===true);}
 function canClose(item){const me=teacherStaff();return !!me&&(Number(item.effectiveCoachId||item.turn.coachId)===Number(me.id)||Number(item.stored?.authorizedCloserEmployeeId)===Number(me.id));}
@@ -23491,10 +23491,10 @@ async function loginStaff(id,pin){
 function logoutStaff(){
  const logs=data.ea115StaffLoginHistory||[];const last=[...logs].reverse().find(x=>Number(x.employeeId)===Number(teacher.staffId)&&!x.loggedOutAt);
  if(last)last.loggedOutAt=new Date().toISOString();if(teacher.staffId)log('Salida del portal docente',teacher.staffId);
- teacher.staffId=null;teacher.key=null;teacher.date=day();teacher.error='';teacher.screen='classes';teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};teacher.noteStudentId=null;
+ teacher.staffId=null;teacher.key=null;teacher.date=day();teacher.error='';teacher.screen='classes';teacher.profileOpen=false;teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};teacher.noteStudentId=null;
  save();
 }
-function openTeacher(){resetPhotoFlow();teacherRoot.classList.add('ea115-open');teacher.staffId=null;teacher.date=day();teacher.key=null;teacher.screen='classes';teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};teacher.error='';teacher.confirmClose=false;renderTeacher();teacherRoot.scrollTop=0;}
+function openTeacher(){resetPhotoFlow();teacherRoot.classList.add('ea115-open');teacher.staffId=null;teacher.date=day();teacher.key=null;teacher.screen='classes';teacher.profileOpen=false;teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};teacher.error='';teacher.confirmClose=false;renderTeacher();teacherRoot.scrollTop=0;}
 function closeTeacher(){resetPhotoFlow();clearPhotoCache();logoutStaff();teacherRoot.classList.remove('ea115-open');teacherRoot.innerHTML='';window.ElevaUnificado?.showChooser?.();}
 
 // Evidencia fotográfica interna de una clase. Los bytes NO van en el objeto data ni en localStorage.
@@ -23577,8 +23577,30 @@ function teacherLogin(){
 function icon(kind){const paths={book:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',back:'<path d="m14 18-6-6 6-6"/>',check:'<path d="m4 12 5 5L20 6"/>',users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M18 8h3M19 7v3"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',logout:'<path d="M10 3H5v18h5M13 8l5 4-5 4M8 12h10"/>',note:'<path d="M4 3h16v18H4zM8 8h8M8 12h8"/>',package:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="m3 10 9 5 9-5M8 7V4h8v3"/>'};return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[kind]||paths.book}</svg>`;}
 function label(status){return `<span class="ea115-pill ${status[1]}">${E(status[0])}</span>`;}
 function button(text,act,cls=''){return `<button type="button" class="ea115-btn ${cls}" data-ea115-act="${E(act)}">${text}</button>`;}
-function shell(head,body,foot=true){return `<header class="ea115-header"><div class="ea115-brand"><span class="ea115-mark">e</span><div><strong>ELEVA SPORT</strong><small>PROFESOR / ASISTENTE</small></div></div><button class="ea115-switch" type="button" data-ea115-act="exit">Accesos</button></header><main class="ea115-main">${head}${body}</main>${foot?`<nav class="ea115-bottom">${button(icon('calendar')+' Mis clases','classes',teacher.screen==='classes'?'current':'')}${button(icon('users')+' Alumnos','students','')}${button(icon('clock')+' Horarios','schedule',teacher.screen==='schedule'?'current':'')}${button(icon('package')+' Materiales','materials','')}${button(icon('clock')+' Historial','history',teacher.screen==='history'?'current':'')}</nav>`:''}`;}
-function teacherHeader(){const selected=teacherStaff(),entries=staffMembers().filter(x=>Number(x.id)===Number(selected?.id));if(teacher.screen==='schedule')return `<div class="ea115-pagehead"><span>ACADEMIA / PROGRAMACIÓN</span><h1>Mis horarios</h1><p>${E(selected?.name||'Personal asignado')} · Programación semanal de tus grupos</p></div>`;return `<div class="ea115-pagehead"><span>ACADEMIA / ${teacher.screen==='history'?'HISTORIAL':'MIS CLASES'}</span><h1>${teacher.screen==='history'?'Historial de clases':'Mis clases'}</h1><p>${E(selected?.name||'Personal asignado')} · ${E(selected?.position||'Profesor / asistente')}</p></div><div class="ea125-topline"><div class="ea125-ident"><span class="ea125-personicon">${E((selected?.name||'P').charAt(0).toUpperCase())}</span><div><strong>${E(selected?.name||'')}</strong><small>Solo turnos asignados · Vista local</small></div></div><label class="ea125-date">Consultar fecha<input id="ea115-date" type="date" value="${E(teacher.date||day())}"></label></div>`;}
+function teacherInitials(who){return String(who?.name||'P').trim().split(/\s+/).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase()||'P';}
+function teacherPhoto(who,wide=false){
+ const photo=String(who?.photoData||'');
+ const good=/^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\s]+$/i.test(photo);
+ const cls=wide?'ea137-face large':'ea137-face';
+ return `<span class="${cls}">${good?`<img src="${E(photo)}" alt="Fotografía de ${E(who.name||'profesor')}" loading="lazy">`:`<span aria-hidden="true">${E(teacherInitials(who))}</span>`}</span>`;
+}
+function teacherProfilePanel(who){
+ const assignments=(data.academyTurns||[]).filter(t=>assigned(t,who.id)&&t.status==='Activo');
+ const sites=[...new Set(assignments.map(t=>String(t.venueId)))].map(id=>venue(id));
+ return `<div class="ea137-profile-panel" role="group" aria-label="Opciones de mi perfil">
+   <div class="ea137-profile-ident">${teacherPhoto(who,true)}<div><strong>${E(who.name||'Personal')}</strong><small>${E(who.position||'Profesor / asistente')}</small><small>${sites.length?E(sites.join(' · ')):'Sin sede asignada'}</small></div></div>
+   <label class="ea137-photo-change">Cambiar mi fotografía<input id="ea137-photo-input" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Elegir fotografía de perfil"></label>
+   <button type="button" class="ea137-profile-line" data-ea115-act="profile-history">${icon('clock')}<span>Historial de clases</span>${icon('back')}</button>
+   <button type="button" class="ea137-profile-line" data-ea115-act="exit">${icon('logout')}<span>Salir a Accesos</span></button>
+ </div>`;
+}
+function shell(head,body,foot=true){
+ const who=teacherStaff();
+ return `<header class="ea115-header"><div class="ea115-brand"><span class="ea115-mark">e</span><div><strong>ELEVA SPORT</strong><small>PROFESOR / ASISTENTE</small></div></div>
+ ${who?`<div class="ea137-profile-box"><button type="button" class="ea137-profile-trigger" data-ea115-act="profile-toggle" aria-label="Abrir mi perfil y el historial" title="Mi perfil" aria-expanded="${!!teacher.profileOpen}">${teacherPhoto(who)}</button>${teacher.profileOpen?teacherProfilePanel(who):''}</div>`:button('Accesos','exit','outline')}
+ </header><main class="ea115-main">${head}${body}</main>${foot?`<nav class="ea115-bottom" aria-label="Secciones del profesor">${button(icon('calendar')+' Mis clases','classes',teacher.screen==='classes'?'current':'')}${button(icon('users')+' Alumnos','students','')}${button(icon('clock')+' Horarios','schedule',teacher.screen==='schedule'?'current':'')}${button(icon('package')+' Materiales','materials','')}</nav>`:''}`;
+}
+function teacherHeader(){const selected=teacherStaff(),entries=staffMembers().filter(x=>Number(x.id)===Number(selected?.id));if(teacher.screen==='schedule')return `<div class="ea115-pagehead"><span>ACADEMIA / PROGRAMACIÓN</span><h1>Mis horarios</h1><p>${E(selected?.name||'Personal asignado')} · Programación semanal de tus grupos</p></div>`;return `<div class="ea115-pagehead"><span>ACADEMIA / ${teacher.screen==='history'?'HISTORIAL':'MIS CLASES'}</span><h1>${teacher.screen==='history'?'Historial de clases':'Mis clases'}</h1><p>${E(selected?.name||'Personal asignado')} · ${E(selected?.position||'Profesor / asistente')}</p></div><div class="ea125-topline"><span class="ea137-assignment-note">Solo turnos asignados</span><label class="ea125-date">Consultar fecha<input id="ea115-date" type="date" value="${E(teacher.date||day())}"></label></div>`;}
 function teacherCards(){const me=teacherStaff();if(!me)return '<div class="ea115-empty">No se pudo verificar el personal asignado.</div>';
  const chosen=teacher.screen==='history'?schedule(teacher.date,me.id).filter(x=>x.stored):schedule(teacher.date,me.id);
  const total=chosen.length,closed=chosen.filter(x=>x.stored?.status==='Cerrada').length,missing=chosen.filter(x=>x.turn.status==='Activo'&&x.stored?.status!=='Cerrada'&&x.stored?.status!=='Suspendida').length;
@@ -23679,12 +23701,14 @@ async function closeSession(){if(teacher.closing)return;const {item,me}=editable
  history(rec,'Clase finalizada y asistencia cerrada',me.id,'Cierre real: '+timeLima(rec.closedAt)+(rec.ea126PhotoException?' · Incidencia fotografica por revisar':''));save();teacher.confirmClose=false;resetPhotoFlow();renderTeacher();notify(teacherRoot,rec.ea126PhotoException?'Clase cerrada. Incidencia fotografica pendiente de revision.':'Clase finalizada con foto y asistencia.');}finally{teacher.closing=false;}}
 teacherRoot.addEventListener('click',e=>{const mark=e.target.closest('[data-ea115-mark]');if(mark){const sid=Number(mark.dataset.ea115Student),status=mark.dataset.ea115Mark;try{if(status==='Justificada'){teacher.noteStudentId=sid;renderTeacher();}else markEntry(sid,status);}catch(err){notify(teacherRoot,err.message)}return;}
  const btn=e.target.closest('[data-ea115-act]');if(!btn)return;e.preventDefault();const a=btn.dataset.ea115Act;try{if(a==='exit')return closeTeacher();if(!teacherStaff())return;
- if(a==='students'){window.ElevaStudentDevelopment?.openTeacher?.();return;}
- if(a==='materials'){window.ElevaLogistica?.openTeacher?.();return;}
- if(a==='schedule'){resetPhotoFlow();teacher.screen='schedule';teacher.key=null;teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};teacher.scheduleFiltersOpen=false;renderTeacher();teacherRoot.scrollTop=0;return;}
+ if(a==='profile-toggle'){teacher.profileOpen=!teacher.profileOpen;renderTeacher();return;}
+ if(a==='profile-history'){teacher.profileOpen=false;teacher.screen='history';teacher.key=null;teacher.confirmClose=false;teacher.noteStudentId=null;renderTeacher();teacherRoot.scrollTop=0;return;}
+ if(a==='students'){teacher.profileOpen=false;window.ElevaStudentDevelopment?.openTeacher?.();return;}
+ if(a==='materials'){teacher.profileOpen=false;window.ElevaLogistica?.openTeacher?.();return;}
+ if(a==='schedule'){teacher.profileOpen=false;resetPhotoFlow();teacher.screen='schedule';teacher.key=null;teacher.scheduleWeek=day();teacher.scheduleFilters={day:'all',site:'all',group:'all'};teacher.scheduleFiltersOpen=false;renderTeacher();teacherRoot.scrollTop=0;return;}
  if(a==='schedule-filter'){teacher.scheduleFiltersOpen=!teacher.scheduleFiltersOpen;renderTeacher();return;}
  if(['schedule-prev','schedule-next','schedule-today','schedule-reset'].includes(a)){if(a==='schedule-reset')teacher.scheduleFilters={day:'all',site:'all',group:'all'};else teacher.scheduleWeek=a==='schedule-today'?day():shiftDate(scheduleMonday(teacher.scheduleWeek||day()),a==='schedule-prev'?-7:7);renderTeacher();teacherRoot.scrollTop=0;return;}
- if(a==='classes'||a==='history'){resetPhotoFlow();teacher.screen=a;teacher.key=null;teacher.confirmClose=false;teacher.noteStudentId=null;renderTeacher();return;}
+ if(a==='classes'||a==='history'){teacher.profileOpen=false;resetPhotoFlow();teacher.screen=a;teacher.key=null;teacher.confirmClose=false;teacher.noteStudentId=null;renderTeacher();return;}
  if(a==='back'){resetPhotoFlow();teacher.key=null;teacher.noteStudentId=null;teacher.confirmClose=false;renderTeacher();return;}
  if(a.startsWith('session:')){resetPhotoFlow();teacher.key=decodeURIComponent(a.slice(8));teacher.noteStudentId=null;teacher.confirmClose=false;renderTeacher();return;}
  if(a==='start-class')return startClass();if(a==='staff-arrive')return staffArrival();if(a==='staff-leave')return staffLeave();
@@ -23699,7 +23723,18 @@ teacherRoot.addEventListener('click',e=>{const mark=e.target.closest('[data-ea11
  if(a==='cancel-note'){teacher.noteStudentId=null;renderTeacher();return;}if(a==='all-present')return allPresent();
  if(a==='close-session'){teacher.confirmClose=true;renderTeacher();return;}if(a==='cancel-close'){teacher.confirmClose=false;renderTeacher();return;}
  if(a==='confirm-close')return void closeSession().catch(err=>notify(teacherRoot,err.message));}catch(err){notify(teacherRoot,err.message)}});
-teacherRoot.addEventListener('change',e=>{const kind=e.target?.dataset?.ea115ScheduleFilter;if(['day','site','group'].includes(kind)){teacher.scheduleFilters??={day:'all',site:'all',group:'all'};teacher.scheduleFilters[kind]=String(e.target.value);renderTeacher();return;}if(e.target.id==='ea126-photo-clearance'){teacher.photoClearance=!!e.target.checked;return;}if(e.target.id==='ea115-date'&&teacherStaff()&&dateValid(e.target.value)){resetPhotoFlow();teacher.date=e.target.value;teacher.key=null;renderTeacher();}});
+teacherRoot.addEventListener('change',e=>{
+ if(e.target?.id==='ea137-photo-input'){
+  const file=e.target.files?.[0],who=teacherStaff();
+  if(!file||!who)return;
+  void (async()=>{
+   if(!/^image\/(jpeg|png|webp)$/i.test(file.type))throw Error('Elige una imagen JPG, PNG o WebP.');
+   const image=await v7ReadCompressedImage(file,320);
+   who.photoData=image;save();teacher.profileOpen=true;renderTeacher();notify(teacherRoot,'Fotografía de perfil actualizada.');
+  })().catch(err=>notify(teacherRoot,err.message||'No se pudo guardar la fotografía.'));
+  return;
+ }
+ const kind=e.target?.dataset?.ea115ScheduleFilter;if(['day','site','group'].includes(kind)){teacher.scheduleFilters??={day:'all',site:'all',group:'all'};teacher.scheduleFilters[kind]=String(e.target.value);renderTeacher();return;}if(e.target.id==='ea126-photo-clearance'){teacher.photoClearance=!!e.target.checked;return;}if(e.target.id==='ea115-date'&&teacherStaff()&&dateValid(e.target.value)){resetPhotoFlow();teacher.date=e.target.value;teacher.key=null;renderTeacher();}});
 teacherRoot.addEventListener('submit',async e=>{const form=e.target;if(form.id==='ea125-teacher-login'){e.preventDefault();if(teacher.busy)return;teacher.busy=true;const b=form.querySelector('[type=submit]');if(b)b.disabled=true;try{const f=new FormData(form);await loginStaff(Number(f.get('employeeId')),String(f.get('pin')||''));}catch(err){teacher.error=err.message;renderTeacher();}finally{teacher.busy=false;}return;}
  if(form.id==='ea126-exception-form'){e.preventDefault();try{savePhotoException(new FormData(form));}catch(err){notify(teacherRoot,err.message)}return;}
  if(form.id!=='ea115-reason-form')return;e.preventDefault();try{markEntry(teacher.noteStudentId,'Justificada',new FormData(form).get('reason')||'');}catch(err){notify(teacherRoot,err.message)}});
@@ -27624,184 +27659,6 @@ body.v51-workspace #eu-provisional-global-nav{top:78px}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh,{once:true});else refresh();
 })();
 </script>
-<style id="eleva-practice-warehouse-style">
-/* Caso guiado opcional: todas las fichas nuevas se identifican como registros de practica. */
-#eleva116-root .ep-tool{background:transparent;color:#e5f7eb;border:1px solid #55717b;border-radius:10px;font-size:12px;font-weight:750;min-height:38px;padding:7px 12px;margin-left:auto;white-space:nowrap}
-#eleva116-root .ep-tool:hover,#eleva116-root .ep-tool:focus-visible{border-color:#00e64d;outline:0}
-#eleva116-root .l116-head-top{flex-wrap:wrap}
-#eleva-practice{position:fixed;inset:0;z-index:29010;background:#0a1c23a8;display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto;font:14px/1.5 Inter,system-ui,Arial,sans-serif;color:#12232d}
-#eleva-practice.is-open{display:flex}
-#eleva-practice *,#eleva-practice *::before,#eleva-practice *::after{box-sizing:border-box}
-#eleva-practice .ep-shell{background:#f7f8f6;border-radius:20px;width:min(100%,880px);margin:auto;box-shadow:0 25px 90px #061b2345;overflow:hidden}
-#eleva-practice .ep-head{background:#12232d;color:#fff;padding:21px 26px;display:flex;align-items:start;gap:12px;justify-content:space-between}
-#eleva-practice .ep-head small{display:block;color:#00e64d;letter-spacing:.07em;font-size:10px;font-weight:850;text-transform:uppercase}
-#eleva-practice h2{font-size:22px;line-height:1.25;letter-spacing:-.035em;margin:5px 0 4px;color:inherit}
-#eleva-practice .ep-head p{font-size:12px;color:#b5c9cc;margin:0}
-#eleva-practice .ep-body{padding:22px 25px 27px}
-#eleva-practice .ep-banner{padding:11px 13px;background:#fff8e9;border:1px solid #efdcaf;border-radius:12px;font-size:12px;color:#785c23;margin-bottom:16px}
-#eleva-practice .ep-panel{background:#fff;border:1px solid #dae5e2;border-radius:15px;padding:17px;margin-bottom:13px}
-#eleva-practice .ep-panel h3{font-size:15px;color:#12232d;margin:0 0 7px}
-#eleva-practice .ep-panel p{margin:4px 0 9px;color:#728286;font-size:12px;line-height:1.55}
-#eleva-practice .ep-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:13px 0}
-#eleva-practice .ep-metric{padding:12px;border-radius:12px;background:#f2f6f4;min-width:0}
-#eleva-practice .ep-metric small{display:block;color:#667b7b;font-size:10px;margin-bottom:3px}
-#eleva-practice .ep-metric strong{font-size:19px;font-variant-numeric:tabular-nums;display:block}
-#eleva-practice .ep-row{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:10px 0;border-top:1px solid #edf1ef}
-#eleva-practice .ep-row:first-of-type{border-top:0}
-#eleva-practice .ep-row .ep-grow{flex:1;min-width:140px}
-#eleva-practice .ep-row b{display:block;font-size:12px}
-#eleva-practice .ep-row small{display:block;font-size:11px;color:#788889;margin-top:2px}
-#eleva-practice .ep-pill{font-size:10px;white-space:nowrap;border-radius:30px;background:#e9f5ef;color:#24684a;padding:5px 8px;font-weight:750}
-#eleva-practice .ep-pill.wait{background:#fff4df;color:#8d6726}
-#eleva-practice button{font:inherit;min-height:37px;cursor:pointer;border-radius:10px;border:1px solid #cfddd8;background:#fff;color:#173843;padding:8px 12px;font-size:11.5px;font-weight:750}
-#eleva-practice button.ep-primary{border-color:#00e64d;background:#00e64d;color:#073621}
-#eleva-practice button.ep-dark{border-color:#12232d;background:#12232d;color:#fff}
-#eleva-practice button.ep-close{color:white;border:1px solid #59747e;background:transparent;min-width:35px}
-#eleva-practice button:disabled{opacity:.5;cursor:not-allowed}
-#eleva-practice .ep-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-#eleva-practice label{display:grid;gap:5px;color:#445e63;font-weight:700;font-size:11px}
-#eleva-practice input,#eleva-practice textarea{border:1px solid #cdded7;border-radius:9px;min-height:40px;padding:8px 11px;color:#12232d;background:white;font:13px Inter,system-ui,sans-serif;width:100%}
-#eleva-practice .ep-fields{display:grid;grid-template-columns:100px 100px 1fr;gap:10px;align-items:end}
-#eleva-practice .ep-note{font-size:11px;color:#718286;line-height:1.5}
-#eleva-practice .ep-error{background:#fff2ef;border:1px solid #f0c5bc;color:#953e2f;padding:10px;border-radius:10px;font-size:12px;margin:10px 0}
-#eleva-practice .ep-success{background:#e8f7ec;border:1px solid #c6e8d0;color:#246344;padding:10px;border-radius:10px;font-size:12px;margin:10px 0}
-#eleva-practice .ep-bottom{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:15px}
-@media(max-width:640px){#eleva-practice{padding:0}#eleva-practice .ep-shell{border-radius:0;min-height:100dvh}#eleva-practice .ep-head{padding:18px}#eleva-practice .ep-body{padding:15px}#eleva-practice .ep-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#eleva-practice .ep-fields{grid-template-columns:1fr 1fr}#eleva-practice .ep-fields label:last-child{grid-column:1/-1}#eleva116-root .ep-tool{font-size:11px;min-height:35px}}
-</style>
-<div id="eleva-practice" aria-hidden="true" aria-label="Caso de práctica de inventario"></div>
-<script id="eleva-practice-warehouse-script">
-/* Ejercicio de usuario REAL sobre V32 / V116. Opt-in, idempotente, no contabilidad ficticia.
- * Solo se habilita expresamente mediante el botón Cargar práctica; no cambia datos reales al arrancar.
- */
-(function(){
-'use strict';
-const ID='EU-PRAC-MATERIALES-2026';
-const root=document.getElementById('eleva-practice');
-const logistics=document.getElementById('eleva116-root');
-const safe=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const now=()=>new Date().toISOString();
-const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Lima',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());return ['year','month','day'].map(t=>p.find(z=>z.type===t).value).join('-');};
-const db=()=>window.V32?.db?.();
-const api=()=>window.ElevaLogistica?._test;
-const mdb=()=>data.v116Logistics;
-const context=()=>data.v130PracticeMateriales||null;
-let message='',error='';
-const venue=()=>{const vs=Array.isArray(data.venues)?data.venues:[];return vs.find(v=>Number(v.id)===1&&v.status!=='Inactivo')||vs.find(v=>/principal/i.test(v.name||'')&&v.status!=='Inactivo')||vs.find(v=>v.status!=='Inactivo')||null;};
-const e=id=>(data.employees||[]).find(x=>Number(x.id)===Number(id));
-const loc=(id)=>db()?.locations?.find(x=>x.id===id);
-const persistData=()=>{if(typeof persist==='function')persist();else localStorage.setItem('eleva_admin_v3_demo',JSON.stringify(data));};
-const scenarioValid=()=>{const x=context(),d=db();return !!x&&!!d&&[x.vestId,x.ballId].every(id=>d.articles.some(a=>a.id===id))&&d.purchases.some(p=>p.id===x.purchaseId)&&[x.donationId,x.purchaseMovementId].every(id=>d.movements.some(m=>m.id===id))&&[x.teacherId,x.warehouseWorkerId].every(id=>e(id));};
-const assertReady=()=>{if(!scenarioValid())throw Error(context()?'Faltan algunos registros del ejemplo. Revisa el inventario antes de continuar.':'Primero carga los datos del caso práctico.');};
-function setup(){
- if(context()){assertReady();return;}
- const d=db(),v=venue();if(!d||!api()||!v)throw Error('No se encontraron Inventario, Logística o una sede activa.');
- const venueId=String(v.id),warehouseId='loc-v'+v.id;
- if(!loc(warehouseId))d.locations.push({id:warehouseId,type:'warehouse',venueId,name:'Almacén de sede',createdAt:now()});
- // IDs identificables; nunca reutilizar artículos de operaciones reales por semejanza de nombre.
- const vestId='ep-chalecos-entrenamiento-24',ballId='ep-pelotas-futbol-20';
- if(d.articles.some(a=>[vestId,ballId].includes(a.id)))throw Error('Ya existen artículos con los identificadores del ejercicio. No se crearon datos nuevos.');
- const employeeId=()=>Math.max(100000,...(data.employees||[]).map(x=>Number(x.id)||0))+1;
- const teacherId=employeeId(),workerId=teacherId+1;
- const stamp=now(),date=today(),tag=ID;
- const article=(id,name,code,cost,variant='')=>({id,name,code,variant,type:'material',unit:'unidad',minimum:0,salePrice:0,standardCost:cost,active:true,description:'CASO DE PRÁCTICA · No es material real registrado',createdAt:stamp,epPractice:tag});
- const vest=article(vestId,'Chalecos de entrenamiento · PRÁCTICA','PRAC-CHAL-24',0);
- const ball=article(ballId,'Pelotas de fútbol · PRÁCTICA','PRAC-BAL-20',100,'N.º 5');
- const donationId='ep-donacion-chalecos-24',purchaseId='ep-compra-pelotas-2000',purchaseMovementId='ep-entrada-pelotas-20';
- if(d.movements.some(x=>[donationId,purchaseMovementId].includes(x.id))||d.purchases.some(x=>x.id===purchaseId))throw Error('El caso ya tiene movimientos con estos identificadores. No se duplicará.');
- const teacher={id:teacherId,name:'Profesor de práctica (ejemplo)',position:'Profesor',venues:[Number(v.id)],status:'Activo',epPractice:tag,vPracticeRole:'profesor'};
- const worker={id:workerId,name:'Almacenero de práctica (ejemplo)',position:'Almacén y Logística',venues:[Number(v.id)],status:'Activo',epPractice:tag,vPracticeRole:'almacenero'};
- // Una compra por S/ 2,000 y una entrada de almacén, sin marcar pago ni comprobante bancario.
- const p={id:purchaseId,number:Math.max(0,...d.purchases.map(x=>Number(x.number)||0))+1,venueId,locationId:warehouseId,providerId:'',providerName:'Proveedor no especificado (práctica)',date,document:'',reference:'CASO-PRAC-PELOTAS',note:'Ejemplo de adquisición; el documento y pago reales no fueron proporcionados.',lines:[{articleId:ballId,qty:20,unitCost:100}],total:2000,status:'Recibida',obligationId:'',createdBy:'Preparación de caso práctico',createdAt:stamp,receivedAt:stamp,receivedBy:'Almacenero de práctica',epPractice:tag};
- const donation={id:donationId,type:'entrada',articleId:vestId,qty:24,from:'',to:warehouseId,status:'Registrado',date,createdAt:stamp,createdBy:'Almacenero de práctica',note:'Donación · donante no especificado · EJEMPLO',v117Origin:'donacion',v117Source:'Donante no especificado (práctica)',v117Reference:'CASO-PRAC-DONACION',v117CostStatus:'Por sustentar',v117NoAutomaticPayable:true,venueId,epPractice:tag};
- const ballMove={id:purchaseMovementId,type:'compra',articleId:ballId,qty:20,to:warehouseId,status:'Registrado',date,createdAt:stamp,createdBy:'Almacenero de práctica',note:'Compra #'+p.number+' · ejemplo S/ 2,000',purchaseId,venueId,epPractice:tag};
- // Aplicar juntos y una sola vez, sin apuntes de tesorería, cobros, ventas ni pagos.
- d.articles.push(vest,ball);d.purchases.push(p);d.movements.push(donation,ballMove);data.employees.push(teacher,worker);
- const lg=mdb()||api().get();
- lg.grants.push({employeeId:teacherId,active:true,sites:[venueId],perms:{view:true,request:true,receive:true,returns:true,requests:false,dispatch:false,deliver:false,count:false},updatedAt:stamp,epPractice:tag});
- lg.grants.push({employeeId:workerId,active:true,sites:[venueId],perms:{view:true,catalog:true,request:false,receive:true,returns:false,requests:true,dispatch:true,deliver:false,count:true},updatedAt:stamp,epPractice:tag});
- data.v130PracticeMateriales={version:1,tag,venueId,warehouseId,vestId,ballId,teacherId,warehouseWorkerId:workerId,donationId,purchaseId,purchaseMovementId,installedAt:stamp,requestBatchId:'',description:'Ejercicio local creado a petición del usuario; no acredita una operación real.'};
- persistData();
- if(window.V32.stock(vestId,warehouseId)!==24||window.V32.stock(ballId,warehouseId)!==20)throw Error('La comprobación inicial de existencias no coincide.');
- message='Caso preparado: 24 chalecos donados y 20 pelotas compradas por S/ 2,000.';
-}
-async function enter(role){
- assertReady();const x=context();
- if(role==='warehouse'){const g=(mdb()||api().get())?.grants?.find(z=>Number(z.employeeId)===Number(x.warehouseWorkerId)&&z.epPractice===ID);if(g&&!g.perms?.catalog){g.perms={...(g.perms||{}),catalog:true};persistData();}}
- if(root.classList.contains('is-open'))close();
- window.ElevaLogistica.openStaff();
- await api().login(role==='teacher'?x.teacherId:x.warehouseWorkerId,'');
- const ui=api().ui;ui.venue=x.venueId;ui.tab=role==='teacher'?'requests':'home';api().render();
-}
-function batch(){const x=context(),d=db();if(!x||!d)return [];
- // Si el docente hizo la solicitud desde la pestaña normal Solicitudes, vincular el lote.
- if(!x.requestBatchId){const groups=new Map();for(const r of d.requests){if(Number(r.employeeId)!==Number(x.teacherId)||![x.vestId,x.ballId].includes(r.articleId)||!r.v116BatchId||String(r.createdAt||'')<String(x.installedAt||''))continue;const list=groups.get(r.v116BatchId)||[];list.push(r);groups.set(r.v116BatchId,list);}for(const [id,rows] of groups){if(rows.some(z=>z.articleId===x.vestId)&&rows.some(z=>z.articleId===x.ballId)){x.requestBatchId=id;persistData();break;}}}
- if(!x.requestBatchId)return [];
- return d.requests.filter(r=>r.v116BatchId===x.requestBatchId&&Number(r.employeeId)===Number(x.teacherId)&&[x.vestId,x.ballId].includes(r.articleId));
-}
-function selectedMovements(){const x=context(),d=db();if(!x||!d||!x.requestBatchId)return [];
- return d.movements.filter(m=>m.type==='asignacion'&&m.v116BatchId===x.requestBatchId&&Number(m.employeeId)===Number(x.teacherId));
-}
-function counts(){const x=context(),d=db();if(!x||!d)return {};
- const get=(aid)=>({almacen:window.V32.stock(aid,x.warehouseId),profesor:window.V32.stock(aid,'cust-'+x.teacherId+'-'+x.venueId),transito:selectedMovements().filter(m=>m.articleId===aid&&m.status==='En tránsito').reduce((s,m)=>s+Number(m.qty||0),0)});
- return {chalecos:get(x.vestId),pelotas:get(x.ballId)};
-}
-function doRequest(){assertReady();const x=context(),u=api().ui;
- if(Number(u.staffId)!==Number(x.teacherId)||u.mode!=='staff')throw Error('Primero pulsa «Entrar como profesor».');
- if(x.requestBatchId||batch().length)throw Error('La solicitud del caso ya fue creada. No se puede duplicar.');
- const q1=Number(root.querySelector('#ep-vests')?.value),q2=Number(root.querySelector('#ep-balls')?.value),purpose=String(root.querySelector('#ep-purpose')?.value||'').trim();
- if(!Number.isSafeInteger(q1)||!Number.isSafeInteger(q2)||q1<1||q2<1||q1>24||q2>20)throw Error('Indica cantidades enteras válidas (máximo 24 chalecos y 20 pelotas).');
- if(purpose.length<5)throw Error('Explica para qué necesitas los implementos.');
- const id=api().addRequest(x.teacherId,x.venueId,[{articleId:x.vestId,qty:q1},{articleId:x.ballId,qty:q2}],purpose+' · '+ID);
- x.requestBatchId=id;persistData();message='Solicitud enviada. Entra como Almacenero para preparar los artículos.';
-}
-function dispatchItem(articleId){assertReady();const x=context(),u=api().ui;
- if(Number(u.staffId)!==Number(x.warehouseWorkerId)||u.mode!=='staff')throw Error('Primero pulsa «Entrar como almacenero».');
- const r=batch().find(t=>t.articleId===articleId&&t.status==='Pendiente');if(!r)throw Error('Esta línea ya fue despachada o no está disponible.');
- api().dispatch(r.id,x.warehouseId,Number(r.qty));message='Despacho registrado: material en tránsito. El profesor debe confirmar recepción.';
-}
-function receiveItem(mid){assertReady();const x=context(),u=api().ui;
- if(Number(u.staffId)!==Number(x.teacherId)||u.mode!=='staff')throw Error('Primero pulsa «Entrar como profesor» para confirmar lo que recibiste.');
- const m=selectedMovements().find(a=>a.id===mid&&a.status==='En tránsito');if(!m)throw Error('La recepción ya fue confirmada.');
- api().receive(m.id,Number(m.qty),'');message='Recepción confirmada en la custodia del profesor.';
-}
-function viewPurchase(){assertReady();close();window.ElevaLogistica?.close?.();window.ElevaUnificado?.show?.('admin');if(typeof go==='function')go('inventory');window.V32?.tab?.('purchases');}
-function stage(){const x=context();if(!x)return 0;const r=batch(),m=selectedMovements();if(!r.length)return 1;if(r.some(z=>z.status==='Pendiente'))return 2;if(m.some(z=>z.status==='En tránsito'))return 3;return 4;}
-function pill(text,wait=false){return `<span class="ep-pill ${wait?'wait':''}">${safe(text)}</span>`;}
-function render(){const x=context(),valid=scenarioValid(),c=valid?counts():null,rs=valid?batch():[],ms=valid?selectedMovements():[],ui=api()?.ui||{},who=x&&Number(ui.staffId)===Number(x.teacherId)?'Profesor':x&&Number(ui.staffId)===Number(x.warehouseWorkerId)?'Almacenero':'Sin perfil de práctica';
- const metrics=(name,key)=>{const v=c[key];return `<div class="ep-panel"><h3>${safe(name)}</h3><div class="ep-metrics"><div class="ep-metric"><small>En almacén</small><strong>${v.almacen}</strong></div><div class="ep-metric"><small>En tránsito</small><strong>${v.transito}</strong></div><div class="ep-metric"><small>Con profesor</small><strong>${v.profesor}</strong></div><div class="ep-metric"><small>Total controlado</small><strong>${v.almacen+v.transito+v.profesor}</strong></div></div></div>`;};
- root.innerHTML=`<div class="ep-shell" role="dialog" aria-modal="true" aria-label="Caso práctico de materiales"><header class="ep-head"><div><small>ELEVA SPORT · Práctica guiada</small><h2>Del almacén al profesor</h2><p>24 chalecos donados · 20 pelotas por S/ 2,000 · asignación de 10 y 10</p></div><button class="ep-close" data-ep="close" aria-label="Cerrar guía">×</button></header><main class="ep-body">
- <div class="ep-banner"><strong>Datos de ejemplo, no operaciones reales.</strong> ${document.querySelector('meta[name="eleva-practice-isolated"]')?'Los 24 chalecos y las 20 pelotas ya están cargados en una copia de práctica con almacenamiento independiente.':'Pulsa «Preparar caso» para añadir registros de ejemplo identificados como PRÁCTICA.'} No se han registrado pagos ni comprobantes bancarios reales.</div>
- ${error?`<div class="ep-error" role="alert">${safe(error)}</div>`:''}${message?`<div class="ep-success" role="status">${safe(message)}</div>`:''}
- ${!x?`<section class="ep-panel"><h3>1. Preparar el escenario</h3><p>Se crearán dos artículos, una donación recibida de 24 chalecos, una compra recibida de 20 pelotas a S/ 100 cada una (total S/ 2,000) y dos perfiles de práctica. La compra queda sin pago registrado porque no proporcionaste un comprobante real.</p><button class="ep-primary" data-ep="seed">Preparar datos de práctica</button></section>`:!valid?`<div class="ep-error">Los registros de ejemplo están incompletos. No los volveré a crear para evitar duplicaciones.</div>`:`
- <div class="ep-actions"><button class="${who==='Profesor'?'ep-primary':''}" data-ep="teacher">Entrar como Profesor de práctica</button><button class="${who==='Almacenero'?'ep-primary':''}" data-ep="warehouse">Entrar como Almacenero de práctica</button></div>
- <div class="ep-actions"><button data-ep="purchases">Ver compra en Inventario</button></div><p class="ep-note">Perfil actual: <strong>${safe(who)}</strong> · Sede: ${safe(data.venues.find(v=>String(v.id)===x.venueId)?.name||'Sede')}</p>
- ${metrics('Chalecos de entrenamiento','chalecos')}${metrics('Pelotas de fútbol · adquisición S/ 2,000','pelotas')}
- <section class="ep-panel"><h3>1 · Entradas registradas ${pill('Completado')}</h3><div class="ep-row"><div class="ep-grow"><b>Donación de chalecos</b><small>24 unidades, sin valor aportado ni desembolso</small></div>${pill('Recibida')}</div><div class="ep-row"><div class="ep-grow"><b>Compra de pelotas</b><small>20 × S/ 100 = S/ 2,000. Compra recibida, pago no registrado.</small></div>${pill('Recibida')}</div></section>
- <section class="ep-panel"><h3>2 · Profesor solicita materiales ${pill(rs.length?'Enviada':'Pendiente',!rs.length)}</h3>
- ${!rs.length?`<p>Ingresa como Profesor y envía la solicitud con los datos ya propuestos. Puedes ajustar las cantidades para probar otros casos.</p><div class="ep-fields"><label>Chalecos<input id="ep-vests" type="number" min="1" max="24" value="10"></label><label>Pelotas<input id="ep-balls" type="number" min="1" max="20" value="10"></label><label>Motivo<input id="ep-purpose" value="Entrenamientos regulares de Academia"></label></div><div class="ep-actions"><button class="ep-dark" data-ep="request">Enviar solicitud como profesor</button></div>`:rs.map(r=>`<div class="ep-row"><div class="ep-grow"><b>${safe(r.articleId===x.vestId?'Chalecos':'Pelotas')} · ${r.qty}</b><small>${safe(r.note||'')}</small></div>${pill(r.status,r.status==='Pendiente')}</div>`).join('')}
- </section>
- <section class="ep-panel"><h3>3 · Almacén prepara y despacha ${pill(ms.length?ms.some(m=>m.status==='En tránsito')?'En curso':'Preparado':'Pendiente',!ms.length)}</h3><p>Ingresa como Almacenero. Cada salida queda «En tránsito» y se descuenta de la ubicación de origen.</p>
- ${rs.length?rs.map(r=>`<div class="ep-row"><div class="ep-grow"><b>${safe(r.articleId===x.vestId?'Chalecos':'Pelotas')} · ${r.qty} unidades</b><small>${safe(r.status)}</small></div>${r.status==='Pendiente'?`<button data-ep="dispatch" data-id="${safe(r.articleId)}">Despachar ${r.qty}</button>`:pill('Despachado')}</div>`).join(''):'<p class="ep-note">Aparecerá cuando se envíe la solicitud.</p>'}</section>
- <section class="ep-panel"><h3>4 · Profesor confirma recepción ${pill(ms.length&&ms.every(m=>m.status==='Recibido')?'Recibido':'Pendiente',!ms.length)}</h3><p>Vuelve al perfil Profesor y confirma las unidades físicas recibidas. Solo entonces pasarán a «Mi custodia».</p>
- ${ms.length?ms.map(m=>`<div class="ep-row"><div class="ep-grow"><b>${safe(m.articleId===x.vestId?'Chalecos':'Pelotas')} · ${m.qty}</b><small>${safe(m.status)}</small></div>${m.status==='En tránsito'?`<button data-ep="receive" data-id="${safe(m.id)}">Confirmar recepción</button>`:pill('En custodia')}</div>`).join(''):'<p class="ep-note">Aparecerá cuando Almacén despache los implementos.</p>'}</section>
- ${stage()===4?`<div class="ep-success"><strong>Ejercicio completado.</strong> Comprueba que el almacén tenga 14 chalecos y 10 pelotas, y que el profesor tenga 10 de cada uno si solicitaste las cantidades propuestas. También puedes practicar devoluciones desde «Mi custodia».</div>`:''}
- <p class="ep-note">También puedes realizar cada operación desde las pantallas normales: Solicitudes, Historial, Mi custodia y Devolver implementos. El panel solo facilita la práctica sobre los mismos registros.</p>`}
- <div class="ep-bottom"><span class="ep-note">Las cifras y perfiles de práctica se guardan en este navegador.</span><button data-ep="close">Cerrar guía y continuar</button></div></main></div>`;
-}
-function open(){if(!logistics?.classList.contains('is-open'))window.ElevaLogistica?.openStaff?.();if(!logistics?.classList.contains('is-open'))return;error='';message='';root.classList.add('is-open');root.setAttribute('aria-hidden','false');render();root.querySelector('button.ep-close')?.focus();}
-function close(){root.classList.remove('is-open');root.setAttribute('aria-hidden','true');root.innerHTML='';}
-function tool(){if(!logistics?.classList.contains('is-open'))return;const head=logistics.querySelector('.l116-head-top');if(!head||head.querySelector('[data-ep-open]'))return;const btn=document.createElement('button');btn.type='button';btn.className='ep-tool';btn.textContent='Caso práctico · materiales';btn.dataset.epOpen='';const back=head.querySelector('.l116-close');if(back)head.insertBefore(btn,back);else head.appendChild(btn);}
-logistics?.addEventListener('click',event=>{if(event.target.closest('[data-ep-open]')){event.preventDefault();open();}});
-new MutationObserver(()=>{tool();}).observe(logistics,{childList:true,subtree:false});
-// Reemplazos sucesivos de innerHTML generan nodos en subárbol; observación de la cabecera sin bucle.
-new MutationObserver(()=>{tool();}).observe(logistics,{childList:true,subtree:true});
-root.addEventListener('click',async ev=>{const b=ev.target.closest('button[data-ep]');if(!b)return;const op=b.dataset.ep;error='';message='';try{if(op==='close')return close();if(op==='seed')setup();else if(op==='teacher')return await enter('teacher');else if(op==='warehouse')return await enter('warehouse');else if(op==='purchases')return viewPurchase();else if(op==='request')doRequest();else if(op==='dispatch')dispatchItem(b.dataset.id);else if(op==='receive')receiveItem(b.dataset.id);render();}catch(err){error=String(err?.message||err);render();}});
-window.addEventListener('keydown',event=>{if(event.key==='Escape'&&root.classList.contains('is-open')){event.preventDefault();close();}});
-window.ElevaPracticaMateriales={open,setup,getState:()=>({scenario:context(),valid:scenarioValid(),counts:scenarioValid()?counts():null,stage:stage(),batch:batch(),movements:selectedMovements()}),enter,request:doRequest,dispatch:dispatchItem,receive:receiveItem};
-})();
-</script>
-
-
 <style id="eu-teacher-four-tabs-style">
 /* ELEVA SPORT · Ajuste visual docente no destructivo. Las funciones permanecen en sus modulos. */
 #ea115-teacher-root [data-ea130-teacher-open],#ea115-teacher-root [data-v116-teacher]{display:none!important}
@@ -27853,6 +27710,81 @@ window.ElevaPracticaMateriales={open,setup,getState:()=>({scenario:context(),val
 @media(max-width:650px){#ea115-teacher-root .ea135-filters{grid-template-columns:repeat(2,minmax(0,1fr))}#ea115-teacher-root .ea135-filters label:last-child{grid-column:1/-1}#ea115-teacher-root .ea135-week-nav strong{font-size:16px}}
 @media(max-width:570px){#ea115-teacher-root .ea115-bottom{grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:7px 6px calc(7px + env(safe-area-inset-bottom))}#ea115-teacher-root .ea115-bottom .ea115-btn{font-size:10.5px;min-height:55px;padding:7px 1px}#ea115-teacher-root .ea135-day{padding:11px 12px}#ea115-teacher-root .ea135-day-head>div{display:grid;gap:0}#ea115-teacher-root .ea135-slot{gap:9px}#ea115-teacher-root .ea135-time{font-size:11.5px;padding:6px 7px}}
 </style>
+
+<style id="ea137-profesor-perfil-css">
+/* Perfil docente compacto; Historial dentro del avatar. */
+#ea115-teacher-root .ea115-header{position:relative;z-index:10}
+#ea115-teacher-root .ea137-profile-box{position:relative;flex:none;margin-left:auto}
+#ea115-teacher-root .ea137-profile-trigger{border:2px solid #607a7b;background:#dff5e7;border-radius:50%;padding:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+#ea115-teacher-root .ea137-profile-trigger:focus-visible{outline:3px solid #00e64d;outline-offset:2px}
+#ea115-teacher-root .ea137-face{height:100%;width:100%;flex:none;border-radius:50%;display:grid;place-items:center;background:#dff5e7;color:#14683c;font-size:15px;font-weight:850;overflow:hidden}
+#ea115-teacher-root .ea137-face.large{height:52px;width:52px;font-size:18px}
+#ea115-teacher-root .ea137-face img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+#ea115-teacher-root .ea137-profile-panel{position:absolute;right:0;top:calc(100% + 10px);z-index:20;width:min(315px,calc(100vw - 25px));background:#fff;color:#12232d;box-shadow:0 15px 48px #051b242d;border:1px solid #dfe8e3;border-radius:17px;padding:12px;display:grid;gap:7px;text-align:left}
+#ea115-teacher-root .ea137-profile-ident{display:flex;align-items:center;gap:12px;padding:7px 5px 11px;border-bottom:1px solid #e8eeeb;min-width:0}
+#ea115-teacher-root .ea137-profile-ident>div{display:grid;gap:2px;min-width:0}
+#ea115-teacher-root .ea137-profile-ident strong{font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+#ea115-teacher-root .ea137-profile-ident small{font-size:10px;color:#6d8379;line-height:1.4}
+#ea115-teacher-root .ea137-photo-change{display:block;position:relative;border:1px solid #d5e7dc;border-radius:10px;padding:10px 12px;text-align:center;font-size:11px;font-weight:760;color:#176541;background:#f7fbf8;cursor:pointer}
+#ea115-teacher-root .ea137-photo-change input{position:absolute;width:1px;height:1px;opacity:0;left:0;bottom:0;pointer-events:none}
+#ea115-teacher-root .ea137-profile-line{display:flex;align-items:center;gap:11px;width:100%;min-height:39px;border:0;background:#fff;color:#12232d;border-radius:10px;text-align:left;font-weight:720;font-size:12px;padding:9px 11px;cursor:pointer}
+#ea115-teacher-root .ea137-profile-line:hover{background:#f2f7f4}
+#ea115-teacher-root .ea137-profile-line span{flex:1}
+#ea115-teacher-root .ea137-profile-line svg{height:18px;width:18px;stroke:currentColor;fill:none;stroke-width:1.7}
+#ea115-teacher-root .ea137-profile-line svg:last-child{transform:rotate(180deg);width:14px;height:14px;color:#9bad9d}
+#ea115-teacher-root .ea137-assignment-note{font-size:11px;color:#6c8279}
+#ea115-teacher-root .ea115-bottom{grid-template-columns:repeat(4,minmax(0,110px));max-width:none}
+#ea130-development-root .ea136-shared-dock,#eleva116-root .ea136-shared-dock{grid-template-columns:repeat(4,minmax(0,110px))}
+@media(max-width:570px){
+ #ea115-teacher-root .ea115-bottom{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+ #ea130-development-root .ea136-shared-dock,#eleva116-root .ea136-shared-dock{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #ea115-teacher-root .ea137-profile-trigger{width:42px;height:42px}
+ #ea115-teacher-root .ea137-profile-panel{right:0;top:calc(100% + 8px)}
+}
+</style>
+
+
+<script id="ea137-san-isidro-initial-stock">
+(function(){
+ 'use strict';
+ if(typeof data==='undefined'||!Array.isArray(data.venues))return;
+ let changed=false;
+ const v=data.venues.find(x=>Number(x.id)===2);
+ if(!v)return;
+ if(/^sede\s+norte$/i.test(String(v.name||'').trim())){v.name='San Isidro Uva Tuba';changed=true;}
+ const db=window.V32?.db?.()||data.v32Inventory;
+ if(!db||!Array.isArray(db.articles)||!Array.isArray(db.movements)||!Array.isArray(db.locations))return;
+ const place=db.locations.find(x=>x.type==='warehouse'&&String(x.venueId)==='2');
+ if(!place){if(changed&&typeof persist==='function')persist();return;}
+ const now=new Date().toISOString(),date=now.slice(0,10);
+ const make=(label,code,matcher)=>{
+  let item=db.articles.find(a=>a.active!==false&&!a.epPractice&&!/PR[ÁA]CTICA|PRAC-/i.test(String(a.name||'')+' '+String(a.code||''))&&(String(a.code||'').toUpperCase()===code||matcher.test(String(a.name||''))));
+  if(!item){
+   const id=code==='SI-CHAL-001'?'si-chalecos-entrenamiento':'si-pelotas-futbol';
+   item=db.articles.find(a=>String(a.id)===id);
+   if(!item){item={id,name:label,code,variant:'',type:'material',unit:'unidad',minimum:0,salePrice:0,standardCost:0,active:true,description:'Material deportivo',createdAt:now,ea137Catalog:true};db.articles.push(item);changed=true;}
+  }
+  // Respect historical stock. An opening balance is added only if no prior
+  // transaction exists for this article at San Isidro's warehouses/custodies.
+  const touches=m=>{
+   const lids=[m.to,m.from].map(String);
+   return String(m.venueId)==='2'||lids.some(id=>db.locations.some(l=>String(l.id)===id&&String(l.venueId)==='2')||/^cust-\d+-2$/.test(id));
+  };
+  if(!db.movements.some(m=>String(m.articleId)===String(item.id)&&touches(m))){
+   db.movements.push({id:'EA137-INICIAL-'+code,type:'inicial',articleId:item.id,qty:10,from:'',to:place.id,status:'Registrado',date,createdAt:now,createdBy:'Inventario inicial de sede',note:'Saldo inicial de 10 unidades · San Isidro Uva Tuba · Sin costo ni comprobante informado',venueId:2,ea137InitialStock:true,ea137Origin:'inventario-inicial'});
+   changed=true;
+  }
+ };
+ make('Chalecos de entrenamiento','SI-CHAL-001',/\bchalecos?\b/i);
+ make('Pelotas de fútbol','SI-PEL-001',/\bpelotas?\b|\bbalones?\b/i);
+ if(changed&&typeof persist==='function')persist();
+ window.ElevaStockInicialSanIsidro={siteId:2,siteName:v.name,stock:()=>{
+  const db2=window.V32?.db?.();if(!db2)return [];
+  return db2.articles.filter(a=>/SI-(CHAL|PEL)-001/.test(String(a.code||''))||['si-chalecos-entrenamiento','si-pelotas-futbol'].includes(String(a.id))).map(a=>({article:a.name,id:a.id,site:v.name,units:window.V32.stock(a.id,place.id)}));
+ }};
+})();
+</script>
+
 </body>
 </html>
 
@@ -28114,3 +28046,12 @@ html:has(#ea115-teacher-root.ea115-open) #ea115-teacher-root .ea115-header{paddi
  sync();
 })();
 </script>
+
+<style id="ea137-final-mobile-polish">
+/* Final overrides after historical shared-dock styles. */
+#ea130-development-root .ea136-shared-dock,#eleva116-root .ea136-shared-dock{grid-template-columns:repeat(4,minmax(0,110px))}
+@media(max-width:700px){
+ #ea130-development-root .ea136-shared-dock,#eleva116-root .ea136-shared-dock{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #ea115-teacher-root .ea137-profile-panel{right:-106px;max-width:calc(100vw - 24px)}
+}
+</style>
