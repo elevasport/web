@@ -28267,3 +28267,156 @@ html:has(#ea115-teacher-root.ea115-open) #ea115-teacher-root .ea115-header{paddi
  #ea115-teacher-root .ea137-profile-panel{right:-106px;max-width:calc(100vw - 24px)}
 }
 </style>
+
+<!-- ELEVA SPORT | Integracion docente: Alumnos y Materiales en el perfil, sin ventanas flotantes -->
+<style id="ea141-teacher-inline-css">
+/* La cabecera real del Profesor, con su foto, permanece visible. */
+#ea115-teacher-root.ea115-open .ea115-header{position:sticky!important;top:0;z-index:51}
+#ea115-teacher-root .ea115-bottom{z-index:52}
+/* Boton temporal Accesos visible en todas las secciones del Profesor. */
+html:has(#ea115-teacher-root.ea115-open) #eu-provisional-global-nav[hidden]{display:flex!important}
+/* Estas vistas se montan fisicamente DENTRO de .ea115-main. Solo esta seccion se sustituye. */
+#ea115-teacher-root.ea141-students .ea115-main > :not(#ea130-development-root),
+#ea115-teacher-root.ea141-materials .ea115-main > :not(#eleva116-root){display:none!important}
+#ea115-teacher-root #ea130-development-root,
+#ea115-teacher-root #eleva116-root{
+ position:relative!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;
+ z-index:auto!important;width:100%;height:auto!important;min-height:0;max-height:none!important;
+ overflow:visible!important;overscroll-behavior:auto;background:transparent;box-shadow:none!important;
+}
+#ea115-teacher-root #ea130-development-root:not(.ea130-visible),
+#ea115-teacher-root #eleva116-root:not(.is-open){display:none!important}
+/* Mantener los motores de datos y formularios originales; suprimir solo las cabeceras duplicadas. */
+#ea115-teacher-root #ea130-development-root > .ea130-header,
+#ea115-teacher-root #eleva116-root > .l116-head,
+#ea115-teacher-root #ea130-development-root > .ea136-shared-dock,
+#ea115-teacher-root #eleva116-root > .ea136-shared-dock{display:none!important}
+#ea115-teacher-root #ea130-development-root .ea130-main{
+ max-width:900px;margin:0 auto;padding:0 0 18px!important;gap:12px;overflow:visible!important;
+}
+#ea115-teacher-root #eleva116-root .l116-main{
+ max-width:900px;margin:0 auto;padding:0 0 18px!important;overflow:visible!important;
+}
+#ea115-teacher-root #ea130-development-root .ea130-lead h1{font-size:25px;margin-bottom:4px}
+#ea115-teacher-root #ea130-development-root .ea130-lead p{font-size:11.5px;margin-bottom:3px}
+#ea115-teacher-root #eleva116-root .l116-main:before{
+ content:'Mis materiales';display:block;color:#12232d;font-size:25px;font-weight:830;letter-spacing:-.045em;line-height:1.3;margin:0 0 13px;
+}
+#ea115-teacher-root #eleva116-root .l116-tabs{margin-bottom:11px;gap:5px}
+#ea115-teacher-root #eleva116-root .l116-tabs button{padding:8px 11px;border-radius:12px;font-size:11px;min-height:36px}
+/* Contactos compactos: una sola tarjeta, dos filas con acciones a la derecha. */
+#ea130-development-root .ea140-contacts{
+ padding:12px 14px!important;gap:3px!important;border-radius:13px;background:#fff;
+}
+#ea130-development-root .ea140-contacts-title{display:flex;align-items:center;gap:8px;padding-bottom:5px}
+#ea130-development-root .ea140-contacts-title h3{font-size:13px;margin:0}
+#ea130-development-root .ea140-contacts-title small{display:none}
+#ea130-development-root .ea140-contacts-grid{grid-template-columns:minmax(0,1fr)!important;gap:0!important}
+#ea130-development-root .ea140-contact-card{
+ display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;
+ background:transparent;border:0;border-radius:0;padding:9px 0;min-height:52px;
+}
+#ea130-development-root .ea140-contact-card + .ea140-contact-card{border-top:1px solid #e8eeea}
+#ea130-development-root .ea140-contact-identity{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere}
+#ea130-development-root .ea140-contact-identity small{font-size:9px;color:#39805b}
+#ea130-development-root .ea140-contact-identity strong{font-size:12px;line-height:1.25}
+#ea130-development-root .ea140-contact-identity span{font-size:10.5px;line-height:1.25}
+#ea130-development-root .ea140-contact-actions{display:flex;flex-wrap:nowrap;align-items:center;gap:5px;justify-content:flex-end}
+#ea130-development-root .ea140-contact-action{
+ display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:7px 9px;border-radius:8px;font-size:10.5px;
+}
+#ea130-development-root .ea140-contact-action:before{content:'☎';font-size:13px;margin-right:4px}
+#ea130-development-root .ea140-contact-action.whatsapp:before{content:'WA';font-size:10px;font-weight:850}
+#ea130-development-root .ea140-unavailable{font-size:10px;color:#8b968e}
+#ea130-development-root .ea140-contacts-hint{display:none}
+@media(max-width:650px){
+ #ea115-teacher-root .ea115-main{padding:18px 13px calc(110px + env(safe-area-inset-bottom))}
+ #ea115-teacher-root #ea130-development-root .ea130-main{padding:0 0 14px!important;gap:10px}
+ #ea115-teacher-root #ea130-development-root .ea130-lead h1{font-size:23px}
+ #ea115-teacher-root #eleva116-root .l116-main:before{font-size:23px}
+ #ea130-development-root .ea140-contacts{padding:10px 12px!important}
+ #ea130-development-root .ea140-contact-card{grid-template-columns:minmax(0,1fr) auto;gap:5px}
+ #ea130-development-root .ea140-contact-action{padding:7px 8px;font-size:0;min-width:33px;min-height:34px}
+ #ea130-development-root .ea140-contact-action:before{font-size:16px;margin:0}
+ #ea130-development-root .ea140-contact-action.whatsapp:before{font-size:10px;font-weight:850}
+}
+</style>
+<script id="ea141-teacher-inline-controller">
+(function(){
+ 'use strict';
+ const teacher=document.getElementById('ea115-teacher-root');
+ const students=document.getElementById('ea130-development-root');
+ const materials=document.getElementById('eleva116-root');
+ const studentAPI=window.ElevaStudentDevelopment;
+ const materialAPI=window.ElevaLogistica;
+ if(!teacher||!students||!materials||!studentAPI||!materialAPI)return;
+ const nativeStudentOpen=studentAPI.openTeacher;
+ const nativeStudentClose=studentAPI.close;
+ const nativeMaterialOpen=materialAPI.openTeacher;
+ const nativeMaterialClose=materialAPI.close;
+ let syncing=false;
+ function present(which){
+  const main=teacher.querySelector('.ea115-main');
+  if(!main||!teacher.classList.contains('ea115-open'))return;
+  const target=which==='students'?students:materials;
+  if(target.parentElement!==main)main.appendChild(target);
+  if(teacher.classList.contains('ea141-students')!==(which==='students')) teacher.classList.toggle('ea141-students',which==='students');
+  if(teacher.classList.contains('ea141-materials')!==(which==='materials')) teacher.classList.toggle('ea141-materials',which==='materials');
+  for(const b of teacher.querySelectorAll('nav.ea115-bottom [data-ea115-act]')){
+   if(b.classList.contains('current')!==(b.dataset.ea115Act===which)) b.classList.toggle('current',b.dataset.ea115Act===which);
+   if(b.dataset.ea115Act===which)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  }
+ }
+ function restoreClosedRoots(){
+  if(!students.classList.contains('ea130-visible')&&students.parentElement!==document.body)document.body.appendChild(students);
+  if(!materials.classList.contains('is-open')&&materials.parentElement!==document.body)document.body.appendChild(materials);
+ }
+ function reconcile(){
+  if(syncing)return;
+  syncing=true;
+  try{
+   if(!teacher.classList.contains('ea115-open')){
+    if(students.classList.contains('ea130-visible')&&studentAPI._test?.UI?.mode==='teacher')nativeStudentClose.call(studentAPI);
+    if(materials.classList.contains('is-open')&&materialAPI._test?.ui?.mode==='teacher')nativeMaterialClose.call(materialAPI);
+    if(students.parentElement!==document.body)document.body.appendChild(students);
+    if(materials.parentElement!==document.body)document.body.appendChild(materials);
+    teacher.classList.remove('ea141-students','ea141-materials');
+    return;
+   }
+   const view=students.classList.contains('ea130-visible')&&studentAPI._test?.UI?.mode==='teacher'?'students':
+     materials.classList.contains('is-open')&&materialAPI._test?.ui?.mode==='teacher'?'materials':'';
+   restoreClosedRoots();
+   if(view)present(view);
+   else{if(teacher.classList.contains('ea141-students'))teacher.classList.remove('ea141-students');if(teacher.classList.contains('ea141-materials'))teacher.classList.remove('ea141-materials');}
+  }finally{syncing=false;}
+ }
+ function closeStudents(){if(students.classList.contains('ea130-visible'))nativeStudentClose.call(studentAPI);}
+ function closeMaterials(){if(materials.classList.contains('is-open')&&materialAPI._test?.ui?.mode==='teacher')nativeMaterialClose.call(materialAPI);}
+ studentAPI.openTeacher=function(...args){
+  closeMaterials();restoreClosedRoots();const result=nativeStudentOpen.apply(studentAPI,args);
+  if(students.classList.contains('ea130-visible'))present('students');
+  teacher.scrollTop=0;return result;
+ };
+ materialAPI.openTeacher=function(...args){
+  closeStudents();restoreClosedRoots();const result=nativeMaterialOpen.apply(materialAPI,args);
+  if(materials.classList.contains('is-open'))present('materials');
+  teacher.scrollTop=0;return result;
+ };
+ studentAPI.close=function(...args){const result=nativeStudentClose.apply(studentAPI,args);reconcile();return result;};
+ materialAPI.close=function(...args){const result=nativeMaterialClose.apply(materialAPI,args);reconcile();return result;};
+ // Navegar entre las otras secciones no debe dejar una vista independiente activa.
+ teacher.addEventListener('click',function(e){
+  const b=e.target.closest('nav.ea115-bottom [data-ea115-act]');
+  if(!b)return;
+  const key=b.dataset.ea115Act;
+  if(key!=='students'&&key!=='materials'){
+   closeStudents();closeMaterials();restoreClosedRoots();teacher.classList.remove('ea141-students','ea141-materials');
+  }
+ },true);
+ // La cabecera se recrea al cambiar de fecha o perfil; reinsertar el nodo real, sin clonar datos.
+ new MutationObserver(reconcile).observe(teacher,{childList:true,subtree:false,attributes:true,attributeFilter:['class']});
+ new MutationObserver(reconcile).observe(students,{attributes:true,attributeFilter:['class']});
+ new MutationObserver(reconcile).observe(materials,{attributes:true,attributeFilter:['class']});
+ reconcile();
+})();
+</script>
